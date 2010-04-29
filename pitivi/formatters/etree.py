@@ -175,7 +175,7 @@ class ElementTreeFormatter(Formatter):
     def _loadColor(self, str):
         match = re.match('#(..)(..)(..)(..)$', str)
         assert match, "couldn't parse saved color %r" % str
-        return tuple(int(x, 16) / 255 for x in match.groups())
+        return tuple(int(x, 16) / 255.0 for x in match.groups())
 
     def _loadObjectFactory(self, klass, element):
         self.debug("klass:%r, element:%r", klass, element)
