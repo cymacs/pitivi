@@ -49,12 +49,12 @@ class WatchDog(object):
     def __init__(self, mainloop, timeout=10000):
         self.timeout = timeout
         self.mainloop = mainloop
-        self.will_quit = False
+        self.will_quit = True
         self.keep_going = True
         self.activated = False
 
     def start(self):
-        self.will_quit = False
+        self.will_quit = True
         self.keep_going = True
         gobject.timeout_add(self.timeout, self._timeoutcb)
 
