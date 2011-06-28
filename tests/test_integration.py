@@ -384,20 +384,20 @@ class Base(TestCase):
         self.runner = InstanceRunner(ptv)
 
     def tearDown(self):
-        # make sure we aren't exiting because our watchdog activated
-        self.assertFalse(self.runner.watchdog.activated)
-        # make sure the instance has been unset
-        will_fail = False
-        if ((self._num_errors == self._result.errors) and
-            (self._num_failures == self._result.failures)):
-            will_fail = not (pitivi.instance.PiTiVi is None)
-
+        pitivi_instance_exists = bool(pitivi.instance.PiTiVi)
         pitivi.instance.PiTiVi = None
         del self.ptv
+
+        self.assertFalse(self.runner.watchdog.activated,
+                "The application stopped because of the watchdog!")
         del self.runner
 
-        if will_fail:
+        # make sure the instance has been unset
+        if (self._num_errors == self._result.errors and
+            self._num_failures == self._result.failures and
+            pitivi_instance_exists):
             raise Exception("Instance was not unset")
+
         TestCase.tearDown(self)
 
 
