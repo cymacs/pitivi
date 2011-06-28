@@ -198,8 +198,6 @@ class Configuration(object):
 
 class InstanceRunner(Signallable):
 
-    no_ui = not(os.getenv("ENABLE_UI"))
-
     class container(object):
 
         def __init__(self):
@@ -301,14 +299,11 @@ class InstanceRunner(Signallable):
 
     def run(self):
         self.watchdog.start()
-        if self.no_ui:
-            self.instance.run(["--no-ui"])
-        else:
-            from pitivi.utils.timeline import Zoomable
-            # set a common zoom ratio so that things like edge snapping values
-            # are consistent
-            Zoomable.setZoomLevel((3 * Zoomable.zoom_steps) / 4)
-            self.instance.run([])
+        from pitivi.utils.timeline import Zoomable
+        # set a common zoom ratio so that things like edge snapping values
+        # are consistent
+        Zoomable.setZoomLevel((3 * Zoomable.zoom_steps) / 4)
+        self.instance.run()
 
     def shutDown(self):
         gobject.idle_add(self.instance.shutdown)
@@ -665,17 +660,7 @@ class TestSeeking(Base):
         def timelineConfigured(runner):
             self._startSeeking(100, 10)
 
-        def timelineConfiguredNoUI(runner):
-            self.runner.shutDown()
-
-        if self.runner.no_ui:
-            print "UI Disabled: Skipping Seeking Test. " \
-                "Use ENABLE_UI to test" \
-                " seeking"
-            self.runner.connect("timeline-configured", timelineConfiguredNoUI)
-        else:
-            self.runner.connect("timeline-configured", timelineConfigured)
-
+        self.runner.connect("timeline-configured", timelineConfigured)
         self.runner.run()
 
 
