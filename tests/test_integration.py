@@ -78,7 +78,7 @@ class TestWatchdog(TestCase):
 
     def testWatchdog(self):
         self.ml = gobject.MainLoop()
-        wd = WatchDog(self.ml, 100)
+        wd = WatchDog(self.ml, timeout=100)
         self.timeout_called = False
         wd.start()
         gobject.timeout_add(2000, self._timeoutCb)
@@ -88,7 +88,7 @@ class TestWatchdog(TestCase):
 
     def testKeepAlive(self):
         self.ml = gobject.MainLoop()
-        wd = WatchDog(self.ml, 2000)
+        wd = WatchDog(self.ml, timeout=2000)
         self.timeout_called = False
         wd.start()
         gobject.timeout_add(500, wd.keepAlive)
@@ -99,7 +99,7 @@ class TestWatchdog(TestCase):
 
     def testSuspend(self):
         self.ml = gobject.MainLoop()
-        wd = WatchDog(self.ml, 500)
+        wd = WatchDog(self.ml, timeout=500)
         self.timeout_called = False
         wd.start()
         wd.suspend()
@@ -210,7 +210,7 @@ class InstanceRunner(Signallable):
 
     def __init__(self, instance):
         self.instance = instance
-        self.watchdog = WatchDog(instance.mainloop, 10000)
+        self.watchdog = WatchDog(instance.mainloop, timeout=10000)
         self.factories = set()
         self.errors = set()
         self.project = None
