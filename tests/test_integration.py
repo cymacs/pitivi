@@ -22,8 +22,7 @@
 """Test pitivi core objects at the API level, simulating the UI input for
 QA scenarios """
 
-import unittest
-TestCase = unittest.TestCase
+from unittest import TestCase
 from pitivi.application import InteractivePitivi
 from pitivi.utils.timeline import MoveContext, TrimStartContext,\
     TrimEndContext
@@ -31,8 +30,8 @@ from pitivi.utils.signal import Signallable
 from pitivi.stream import AudioStream, VideoStream
 import pitivi.instance
 import gobject
-import os.path
 import gst
+import os
 import random
 
 base_uri = "file:///" + os.getcwd() + "/media/"
@@ -484,7 +483,7 @@ class TestBasic(Base):
                 "start": 0,
                 "duration": gst.SECOND,
                 "media-start": gst.SECOND,
-                "priority": 0
+                "priority": 0,
             })
         initial.addSource(
             "object2",
@@ -621,8 +620,6 @@ class TestBasic(Base):
         brush = Brush(self.runner)
         brush.connect("scrub-done", scrubDone)
         self.runner.run()
-
-from pitivi.pipeline import PipelineError
 
 
 class TestSeeking(Base):
@@ -958,7 +955,7 @@ class TestTransitions(Base):
         phase3.updateSource(
             "object3",
             props={
-                "duration": 1 * gst.SECOND
+                "duration": 1 * gst.SECOND,
             })
 
         phase4 = initial.clone()
