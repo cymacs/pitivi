@@ -256,12 +256,15 @@ class InstanceRunner(Signallable):
             self.project.sources.addUri(uri)
 
     def _trackAddedCb(self, timeline, track):
-        if type(track.stream) is AudioStream:
+        stream_type = type(track.stream)
+        if stream_type is AudioStream:
             self.audioTracks += 1
             attrname = "audio%d" % self.audioTracks
-        elif type(track.stream) is VideoStream:
+        elif stream_type is VideoStream:
             self.videoTracks += 1
             attrname = "video%d" % self.videoTracks
+        else:
+            raise Exception("Unknown type of track stream: %s" % stream_type)
         container = self.container()
         setattr(self, attrname, container)
         self.tracks[track] = container
