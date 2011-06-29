@@ -118,6 +118,7 @@ class Configuration(object):
 
     def __init__(self, *sources):
         self.sources = []
+        self._bad_sources_names = set()
         self.source_map = {}
         for source in sources:
             self.addSource(*source)
@@ -125,10 +126,10 @@ class Configuration(object):
     def clone(self):
         ret = Configuration()
         for source in self.sources:
-            if len(source) == 3:
+            if self._isSourceGood(source):
                 name, uri, props = source
                 ret.addSource(name, uri, dict(props))
-            if len(source) == 2:
+            else:
                 ret.addBadSource(*source)
         return ret
 
@@ -157,20 +158,20 @@ class Configuration(object):
         self.source_map[name] = (uri, orig_props)
 
     def addBadSource(self, name, uri):
-        if name in self.source_map:
-            raise Exception("Duplicate source: '%d' already defined" % name)
-        self.sources.append((name, uri))
-        self.source_map[name] = uri, None
+        self.addSource(name, uri)
+        self._bad_sources_names.add(name)
 
     def getUris(self):
         return set((source[1] for source in self.sources))
 
     def getGoodUris(self):
-        return set((source[1] for source in self.sources if
-            len(source) > 2))
+        return set((source[1] for source in self.getGoodSources()))
 
     def getGoodSources(self):
-        return (source for source in self.sources if len(source) > 2)
+        return (source for source in self.sources if self._isSourceGood(source))
+
+    def _isSourceGood(self, source):
+        return source[0] not in self._bad_sources_names
 
     def matches(self, instance_runner):
         for name, uri, props in self.getGoodSources():
@@ -193,7 +194,7 @@ class Configuration(object):
                 names))
 
     def __iter__(self):
-        return (source for source in self.sources if len(source) > 2)
+        return self.getGoodSources()
 
 
 class InstanceRunner(Signallable):
