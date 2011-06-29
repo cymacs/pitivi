@@ -310,8 +310,12 @@ class InstanceRunner(Signallable):
         self.instance.run()
 
     def shutDown(self):
-        gobject.idle_add(self.instance.shutdown)
-        self.project._dirty = False
+        def application_shutdown():
+            assert self.instance.shutdown()
+            # Return False so we won't be called again.
+            return False
+        gobject.idle_add(application_shutdown)
+        self.project.setModificationState(False)
 
 
 class Brush(Signallable):
