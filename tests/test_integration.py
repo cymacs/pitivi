@@ -369,19 +369,12 @@ class Base(TestCase):
 
     def setUp(self):
         TestCase.setUp(self)
-        ptv = InteractivePitivi()
-        # was the pitivi object created
-        self.assert_(ptv)
-
-        # were the contents of pitivi properly created
-        self.assertEqual(ptv.current, None)
-
-        # was the unique instance object properly set
-        self.assertEquals(pitivi.instance.PiTiVi, ptv)
-        self.ptv = ptv
-
-        # create an instance runner
-        self.runner = InstanceRunner(ptv)
+        self.ptv = InteractivePitivi()
+        self.assertEqual(self.ptv.current, None,
+                "The application should not have a project yet!")
+        self.assertEquals(pitivi.instance.PiTiVi, self.ptv,
+                "The application instance was not set correctly!")
+        self.runner = InstanceRunner(self.ptv)
 
     def tearDown(self):
         pitivi_instance_exists = bool(pitivi.instance.PiTiVi)
