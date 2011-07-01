@@ -431,8 +431,9 @@ class TestBasic(Base):
         self.runner.loadConfiguration(config)
         self.runner.run()
 
-        self.assertFalse(hasattr(self.runner, test1))
-        self.assertFalse(hasattr(self.runner, test2))
+        # Make sure the sources have not been added to the timeline.
+        self.assertFalse(hasattr(self.runner, "test1"))
+        self.assertFalse(hasattr(self.runner, "test2"))
         self.failUnlessEqual(self.runner.factories, set((test1, test2)))
         self.failUnlessEqual(self.runner.errors, set((test3,)))
 
