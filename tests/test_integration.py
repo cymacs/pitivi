@@ -28,6 +28,7 @@ from pitivi.utils.timeline import MoveContext, TrimStartContext,\
     TrimEndContext
 from pitivi.utils.signal import Signallable
 from pitivi.stream import AudioStream, VideoStream
+from pitivi.ui.zoominterface import Zoomable
 import pitivi.instance
 import gobject
 import gst
@@ -304,7 +305,6 @@ class InstanceRunner(Signallable):
     def run(self):
         self.watchdog.start()
         self.instance.projectManager.newBlankProject()
-        from pitivi.utils.timeline import Zoomable
         # Set a common zoom ratio so that things like edge snapping values
         # are consistent.
         # This operation must be done after the creation of the project!
@@ -390,6 +390,11 @@ class Base(TestCase):
         pitivi_instance_exists = bool(pitivi.instance.PiTiVi)
         pitivi.instance.PiTiVi = None
         del self.ptv
+
+        # Reset the Zoomable class status, otherwise it keeps references
+        # to instances which have been deleted, causing segfaults.
+        # TODO: Refactor the Zoomable class so we don't have to do this.
+        Zoomable._instances = []
 
         self.assertFalse(self.runner.watchdog.activated,
                 "The application stopped because of the watchdog!")
