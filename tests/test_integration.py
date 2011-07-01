@@ -23,7 +23,7 @@
 QA scenarios """
 
 from unittest import TestCase
-from pitivi.application import InteractivePitivi
+from pitivi.application import FullGuiPitivi
 from pitivi.utils.timeline import MoveContext, TrimStartContext,\
     TrimEndContext
 from pitivi.utils.signal import Signallable
@@ -303,9 +303,11 @@ class InstanceRunner(Signallable):
 
     def run(self):
         self.watchdog.start()
+        self.instance.projectManager.newBlankProject()
         from pitivi.utils.timeline import Zoomable
-        # set a common zoom ratio so that things like edge snapping values
-        # are consistent
+        # Set a common zoom ratio so that things like edge snapping values
+        # are consistent.
+        # This operation must be done after the creation of the project!
         Zoomable.setZoomLevel((3 * Zoomable.zoom_steps) / 4)
         self.instance.run()
 
@@ -365,7 +367,7 @@ class Brush(Signallable):
 
 class Base(TestCase):
     """
-    Creates and runs an InteractivePitivi object, then starts the mainloop.
+    Creates and runs a FullGuiPitivi object, then starts the mainloop.
     Uses a WatchDog to ensure that test cases will eventually terminate with an
     assertion failure if runtime errors occur inside the mainloop."""
 
@@ -377,7 +379,7 @@ class Base(TestCase):
 
     def setUp(self):
         TestCase.setUp(self)
-        self.ptv = InteractivePitivi()
+        self.ptv = FullGuiPitivi()
         self.assertEqual(self.ptv.current, None,
                 "The application should not have a project yet!")
         self.assertEquals(pitivi.instance.PiTiVi, self.ptv,
