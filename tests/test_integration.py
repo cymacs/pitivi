@@ -222,6 +222,7 @@ class InstanceRunner(Signallable):
         self.pending_configuration = None
         self.audioTracks = 0
         self.videoTracks = 0
+        self.instance_alive = True
         instance.connect("new-project-loaded", self._newProjectLoadedCb)
 
     def loadConfiguration(self, configuration):
@@ -303,6 +304,7 @@ class InstanceRunner(Signallable):
         self.emit("timeline-configured")
 
     def run(self):
+        """Run the main loop of the application."""
         self.watchdog.start()
         self.instance.projectManager.newBlankProject()
         # Set a common zoom ratio so that things like edge snapping values
@@ -312,12 +314,18 @@ class InstanceRunner(Signallable):
         self.instance.run()
 
     def shutDown(self):
+        if not self.instance_alive:
+            return
+        self.instance_alive = False
+
         def application_shutdown():
             assert self.instance.shutdown()
             # Return False so we won't be called again.
             return False
         gobject.idle_add(application_shutdown)
-        self.project.setModificationState(False)
+
+        if self.project:
+            self.project.setModificationState(False)
 
 
 class Brush(Signallable):
@@ -395,6 +403,10 @@ class Base(TestCase):
         # to instances which have been deleted, causing segfaults.
         # TODO: Refactor the Zoomable class so we don't have to do this.
         Zoomable._instances = []
+
+        # Make sure the application is always shut down.
+        if self.runner.instance_alive:
+            self.runner.shutDown()
 
         self.assertFalse(self.runner.watchdog.activated,
                 "The application stopped because of the watchdog!")
