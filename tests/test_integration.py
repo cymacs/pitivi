@@ -22,6 +22,8 @@
 """Test pitivi core objects at the API level, simulating the UI input for
 QA scenarios """
 
+from collections import deque
+
 from unittest import TestCase
 from pitivi.application import FullGuiPitivi
 from pitivi.configure import _get_root_dir
@@ -335,39 +337,33 @@ class Brush(Signallable):
 
     def __init__(self, runner, delay=100, maxtime=7200, maxpriority=10):
         self.context = None
-        self.time = 0
-        self.priority = 0
-        self.maxPriority = maxpriority
-        self.maxTime = maxtime
-        self.count = 0
-        self.steps = 0
+        self.max_priority = maxpriority
+        self.max_time = maxtime
         self.delay = delay
         self.runner = runner
-        self.watchdog = runner.watchdog
 
-    def scrub(self, context, finalTime, finalPriority, steps=10):
+    def scrub(self, context, final_time, final_priority, steps=10):
         self.context = context
-        self.time = finalTime
-        self.priority = finalPriority
-        self.count = 0
-        self.steps = steps
+        self._steps = deque()
+        for unused_i in xrange(max(0, steps - 1)):
+            self._steps.append((random.randint(0, self.max_time),
+                                random.randint(0, self.max_priority)))
+        self._steps.append((final_time, final_priority))
         gobject.timeout_add(self.delay, self._scrubTimeoutCb)
 
     def _scrubTimeoutCb(self):
-        self.watchdog.keepAlive()
-        self.count += 1
-        if self.count < self.steps:
-            time_ = random.randint(0, self.maxTime)
-            priority = random.randint(0, self.maxPriority)
-            self.context.editTo(time_, priority)
-            self.emit("scrub-step", time_, priority)
-            return True
-        else:
-            self.context.editTo(self.time, self.priority)
-            self.emit("scrub-step", self.time, self.priority)
+        self.runner.watchdog.keepAlive()
+        time, priority = self._steps.popleft()
+        print "Scrubbing to position %s, priority %s" % (time, priority)
+        self.context.editTo(time, priority)
+        self.emit("scrub-step", time, priority)
+        if not self._steps:
             self.context.finish()
             self.emit("scrub-done")
+            # Return False so we won't be called again.
             return False
+        else:
+            return True
 
 
 class Base(TestCase):
