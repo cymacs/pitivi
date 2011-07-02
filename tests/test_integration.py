@@ -335,20 +335,25 @@ class Brush(Signallable):
         "scrub-done": [],
     }
 
-    def __init__(self, runner, delay=100, maxtime=7200, maxpriority=10):
+    def __init__(self, runner, delay=100, maxtime=2 * 60 * 60, maxpriority=10):
         self.context = None
         self.max_priority = maxpriority
         self.max_time = maxtime
         self.delay = delay
         self.runner = runner
-
-    def scrub(self, context, final_time, final_priority, steps=10):
-        self.context = context
         self._steps = deque()
-        for unused_i in xrange(max(0, steps - 1)):
-            self._steps.append((random.randint(0, self.max_time),
-                                random.randint(0, self.max_priority)))
-        self._steps.append((final_time, final_priority))
+
+    def addRandomSteps(self, steps):
+        for unused_i in xrange(steps):
+            time = random.randint(0, self.max_time)
+            priority = random.randint(0, self.max_priority)
+            self.addStep(time, priority)
+
+    def addStep(self, time, priority):
+        self._steps.append((time, priority))
+
+    def scrub(self, context):
+        self.context = context
         gobject.timeout_add(self.delay, self._scrubTimeoutCb)
 
     def _scrubTimeoutCb(self):
@@ -528,7 +533,9 @@ class TestBasic(Base):
             context = MoveContext(self.runner.timeline,
                 self.runner.video1.object1,
                 set((self.runner.audio1.object2,)))
-            brush.scrub(context, 10 * gst.SECOND, 1, steps=10)
+            brush.addRandomSteps(10)
+            brush.addStep(10 * gst.SECOND, 1)
+            brush.scrub(context)
 
         def scrubStep(brush, time, priority):
             pass
@@ -572,7 +579,8 @@ class TestBasic(Base):
             context = MoveContext(self.runner.timeline,
                 self.runner.video1.clip1, set())
             context.setMode(context.RIPPLE)
-            brush.scrub(context, 11 * gst.SECOND, 0, steps=0)
+            brush.addStep(11 * gst.SECOND, 0)
+            brush.scrub(context)
 
         def scrubDone(brush):
             final.matches(self.runner)
@@ -626,7 +634,9 @@ class TestBasic(Base):
             context = TrimStartContext(self.runner.timeline,
                 self.runner.video1.clip3, set())
             context.setMode(context.RIPPLE)
-            brush.scrub(context, 10 * gst.SECOND, 0)
+            brush.addRandomSteps(10)
+            brush.addStep(10 * gst.SECOND, 0)
+            brush.scrub(context)
         self.runner.connect("timeline-configured", timelineConfigured)
 
         def scrubDone(brush):
@@ -760,17 +770,20 @@ class TestRippleExtensive(Base):
             self.runner.shutDown()
 
     def testRippleMoveComplex(self):
-        # in this test we move directly to the given position (steps=0)
+        # in this test we move directly to the given position
         def rippleMoveComplexScrubFunc(context, position, priority):
-            self.brush.scrub(context, position, priority, steps=0)
+            self.brush.addStep(position, priority)
+            self.brush.scrub(context)
         self.scrub_func = rippleMoveComplexScrubFunc
         self.runner.run()
 
     def testRippleMoveComplexRandom(self):
-        # same as above test, but scrub randomly (steps=100)
+        # same as above test, but scrub randomly
         # FIXME: this test fails for unknown reasons
         def rippleMoveComplexRandomScrubFunc(context, position, priority):
-            self.brush.scrub(context, position, priority, steps=100)
+            self.brush.addRandomSteps(100)
+            self.brush.addStep(position, priority)
+            self.brush.scrub(context)
         self.scrub_func = rippleMoveComplexRandomScrubFunc
         self.runner.run()
 
@@ -823,7 +836,10 @@ class TestTransitions(Base):
                 context = MoveContext(self.runner.timeline,
                     self.runner.video1.object2,
                         set([self.runner.video1.object2]))
-                brush.scrub(context, self._cur_move[0], self._cur_move[1], steps=10)
+                brush.addRandomSteps(10)
+                time, priority = self._cur_move
+                brush.addStep(time, priority)
+                brush.scrub(context)
             else:
                 self.runner.shutDown()
 
@@ -894,7 +910,9 @@ class TestTransitions(Base):
                 context = MoveContext(self.runner.timeline,
                     self.runner.video1.object2,
                         set([getattr(self.runner.video1, other)]))
-                brush.scrub(context, start, priority, steps=10)
+                brush.addRandomSteps(10)
+                brush.addStep(start, priority)
+                brush.scrub(context)
             else:
                 self.runner.shutDown()
 
@@ -1047,9 +1065,10 @@ class TestTransitions(Base):
                 self._cur_move = moves.pop(0)
                 context, focus, start, priority, config, trans = self._cur_move
                 obj = getattr(self.runner.video1, focus)
-                context = context(self.runner.timeline,
-                     obj, set())
-                brush.scrub(context, start, priority, steps=10)
+                context = context(self.runner.timeline, obj, set())
+                brush.addRandomSteps(10)
+                brush.addStep(start, priority)
+                brush.scrub(context)
             else:
                 self.runner.shutDown()
 
@@ -1065,7 +1084,7 @@ class TestTransitions(Base):
                         trans])
 
                 self.failUnlessEqual(set(self.runner.video1.transitions.keys()),
-                   expected)
+                    expected)
             nextMove()
 
         self.runner.loadConfiguration(initial)
