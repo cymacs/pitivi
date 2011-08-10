@@ -727,47 +727,48 @@ class TestRippleExtensive(Base):
 
     def setUp(self):
         Base.setUp(self)
-        # create a seqence of adjacent clips in staggered formation, each one
-        # second long
+        # Create a sequence of adjacent clips in staggered formation, each one
+        # second long.
         self.initial = Configuration()
-        self.finals = []
         for i in xrange(0, 10):
             self.initial.addSource('clip%d' % i, self.video_uri,
                 {'start': gst.SECOND * i, 'duration': gst.SECOND,
                     'priority': i % 2})
+        # Create a list of 10 scenarios.
+        self.finals = []
+        for i in xrange(0, 10):
             # we're going to repeat the same operation using each clip as the
             # focus of the editing context. We create one final
             # configuration for the expected result of each scenario.
             final = Configuration()
             for j in xrange(0, 10):
                 if j < i:
-                    final.addSource('clip%d' % j, self.video_uri,
-                        {'start': gst.SECOND * j,
-                          'duration': gst.SECOND,
-                          'priority': j % 2})
+                    start = gst.SECOND * j
+                    priority = j % 2
                 else:
-                    final.addSource('clip%d' % j, self.video_uri,
-                        {'start': gst.SECOND * (j + 10),
-                          'duration': gst.SECOND,
-                          'priority': (j % 2) + 1})
+                    start = gst.SECOND * (j + 10)
+                    priority = (j % 2) + 1
+                props = {'start': start,
+                         'duration': gst.SECOND,
+                         'priority': priority}
+                final.addSource('clip%d' % j, self.video_uri, props)
             self.finals.append(final)
-        self.cur = 0
         self.context = None
         self.brush = Brush(self.runner)
         self.runner.loadConfiguration(self.initial)
         self.runner.connect("timeline-configured", self.timelineConfigured)
-        self.brush.connect("scrub-done", self.scenarioDone)
+        self.brush.connect("scrub-done", self.scenarioDoneCb)
 
     # when the timeline is configured, kick off the test by starting the
     # first scenario
     def timelineConfigured(self, runner):
-        self.nextScenario()
+        self.runScenario(0)
 
-    # for each scenario, create the context using the specified clip as
-    # focus, and not specifying any other clips.
-    def nextScenario(self):
-        cur = self.cur
-        clipname = "clip%d" % cur
+    def runScenario(self, scenario_index):
+        self.current_scenario_index = scenario_index
+        clipname = "clip%d" % self.current_scenario_index
+        # Create the context using a single clip as focus and
+        # not specifying any other clips.
         context = MoveContext(self.runner.timeline,
             getattr(self.runner.video1, clipname), set())
         context.snap(False)
@@ -775,26 +776,30 @@ class TestRippleExtensive(Base):
         self.context = context
         # this isn't a method, but an attribute that will be set by specific
         # test cases
-        self.scrub_func(context, (cur + 10) * gst.SECOND, (cur % 2) + 1)
+        self.scrub_func(context,
+                        (self.current_scenario_index + 10) * gst.SECOND,
+                        (self.current_scenario_index % 2) + 1)
 
-    # when each scrub has finished, verify the current configuration is
-    # correct, reset the timeline, and kick off the next scenario. Shut down
-    # pitivi when we have finished the last scenario.
-    def scenarioDone(self, brush):
-        cur = self.cur
-        config = self.finals[cur]
-        context = self.context
-        context.finish()
-        config.matches(self.runner)
-        restore = MoveContext(self.runner.timeline, context.focus, set())
+    # Handle the finish of a scrub operation.
+    def scenarioDoneCb(self, brush):
+        scenario_expected_config = self.finals[self.current_scenario_index]
+        self.context.finish()
+        try:
+            scenario_expected_config.matches(self.runner)
+        except Exception, e:
+            raise Exception("Scenario failed: %s" % self.current_scenario_index, e)
+        # Reset the timeline.
+        restore = MoveContext(self.runner.timeline, self.context.focus, set())
         restore.setMode(restore.RIPPLE)
-        restore.editTo(cur * gst.SECOND, (cur % 2))
+        restore.editTo(self.current_scenario_index * gst.SECOND,
+                       self.current_scenario_index % 2)
         restore.finish()
         self.initial.matches(self.runner)
-        self.cur += 1
-        if self.cur < 10:
-            self.nextScenario()
+        if self.current_scenario_index + 1 < len(self.finals):
+            # Kick off the next scenario.
+            self.runScenario(self.current_scenario_index + 1)
         else:
+            # We finished the last scenario. Shut down the application.
             self.runner.shutDown()
 
     def testRippleMoveComplex(self):
