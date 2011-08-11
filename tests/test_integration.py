@@ -174,9 +174,9 @@ class Configuration(object):
 
     def matches(self, instance_runner):
         for name, uri, props in self.getGoodSources():
-            if not hasattr(instance_runner, name):
+            if not name in instance_runner.timelineObjects:
                 raise Exception("Project missing source %s" % name)
-            timelineObject = getattr(instance_runner, name)
+            timelineObject = instance_runner.timelineObjects[name]
             if timelineObject.factory.uri != uri:
                 raise Exception("%s has wrong factory type!" % name)
             if timelineObject:
@@ -289,7 +289,6 @@ class InstanceRunner(Signallable):
                 continue
 
             timelineObject = self.timeline.addSourceFactory(factory)
-            setattr(self, name, timelineObject)
             self.timelineObjects[name] = timelineObject
             for trackObject in timelineObject.track_objects:
                 track = self.tracks[trackObject.track]
@@ -489,8 +488,8 @@ class TestBasic(Base):
         self.runner.connect("timeline-configured", timelineConfigured)
         self.runner.run()
 
-        self.assertTrue(self.runner.object1)
-        self.assertTrue(self.runner.object2)
+        self.assertTrue(self.runner.timelineObjects['object1'])
+        self.assertTrue(self.runner.timelineObjects['object2'])
         self.assertTrue(self.runner.video1.object1)
         self.assertTrue(self.runner.audio1.object2)
 
