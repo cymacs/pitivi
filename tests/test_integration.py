@@ -116,6 +116,7 @@ class TestWatchdog(TestCase):
 class Configuration(object):
 
     def __init__(self, *sources):
+        # A list of (name, uri, props) tuples.
         self.sources = []
         self._bad_sources_names = set()
         self.source_map = {}
@@ -214,17 +215,25 @@ class InstanceRunner(Signallable):
         self.factories = set()
         self.errors = set()
         self.project = None
+        # A pitivi.timeline.timeline.Timeline instance.
         self.timeline = None
+        # A map from pitivi.timeline.track.Track to container.
         self.tracks = {}
         self.timelineObjects = {}
-        self.pending_configuration = None
+        # The timeline configuration to be applied when
+        # the "new-project-loaded" event is generated.
+        self._pending_configuration = None
         self.audioTracks = 0
         self.videoTracks = 0
         self.instance_alive = True
         instance.connect("new-project-loaded", self._newProjectLoadedCb)
 
     def loadConfiguration(self, configuration):
-        self.pending_configuration = configuration
+        """Schedule applying a configuration when a new project is created.
+
+        @type configuration Configuration
+        """
+        self._pending_configuration = configuration
 
     def _newProjectLoadedCb(self, instance, project):
         self.project = instance.current
@@ -236,8 +245,8 @@ class InstanceRunner(Signallable):
         self.project.sources.connect("ready", self._readyCb)
         self.timeline.connect("track-added", self._trackAddedCb)
 
-        if self.pending_configuration:
-            self._loadSources(self.pending_configuration)
+        if self._pending_configuration:
+            self._loadSources(self._pending_configuration)
 
     def _sourceAdded(self, medialibrary, factory):
         self.factories.add(factory.uri)
@@ -246,9 +255,11 @@ class InstanceRunner(Signallable):
         self.errors.add(uri)
 
     def _readyCb(self, soucelist):
-        assert self.factories == self.pending_configuration.getGoodUris()
-        if self.pending_configuration:
-            self._setupTimeline(self.pending_configuration)
+        if self._pending_configuration:
+            assert self.factories == self._pending_configuration.getGoodUris()
+            self._setupTimeline(self._pending_configuration)
+        else:
+            assert not self.factories
         self.emit("sources-loaded")
 
     def _loadSources(self, configuration):
@@ -256,6 +267,11 @@ class InstanceRunner(Signallable):
             self.project.sources.addUri(uri)
 
     def _trackAddedCb(self, timeline, track):
+        """Handle the addition of a track to a timeline.
+
+        @type timeline pitivi.timeline.timeline.Timeline
+        @type track pitivi.timeline.track.Track
+        """
         stream_type = type(track.stream)
         if stream_type is AudioStream:
             self.audioTracks += 1
@@ -281,23 +297,20 @@ class InstanceRunner(Signallable):
 
     def _setupTimeline(self, configuration):
         for name, uri, props in configuration:
+            if not props:
+                continue
             factory = self.project.sources.getUri(uri)
             if not factory:
                 raise Exception("Could not find '%s' in sourcelist" % name)
 
-            if not props:
-                continue
-
             timelineObject = self.timeline.addSourceFactory(factory)
-            self.timelineObjects[name] = timelineObject
-            for trackObject in timelineObject.track_objects:
-                track = self.tracks[trackObject.track]
-                setattr(track, name, trackObject)
-
-            if not timelineObject:
-                raise Exception("Could not add source '%s' to timeline" % name)
             for prop, value in props.iteritems():
                 setattr(timelineObject, prop, value)
+            self.timelineObjects[name] = timelineObject
+            for trackObject in timelineObject.track_objects:
+                container = self.tracks[trackObject.track]
+                setattr(container, name, trackObject)
+
         self.emit("timeline-configured")
 
     def run(self):
@@ -883,8 +896,7 @@ class TestTransitions(Base):
             tr = self.runner.video1.transitions[(a, b)]
 
             self.failUnlessEqual(b.start, start)
-            self.failUnlessEqual(a.start + a.duration - start,
-                duration)
+            self.failUnlessEqual(a.start + a.duration - start, duration)
             self.failUnlessEqual(tr.start, start)
             self.failUnlessEqual(tr.duration, duration)
             self.failUnlessEqual(tr.priority, 0)
