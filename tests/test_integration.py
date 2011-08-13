@@ -115,13 +115,11 @@ class TestWatchdog(TestCase):
 
 class Configuration(object):
 
-    def __init__(self, *sources):
+    def __init__(self):
         # A list of (name, uri, props) tuples.
         self.sources = []
         self._bad_sources_names = set()
         self.source_map = {}
-        for source in sources:
-            self.addSource(*source)
 
     def clone(self):
         ret = Configuration()
