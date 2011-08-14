@@ -281,9 +281,9 @@ class InstanceRunner(Signallable):
 
     def _setupTimeline(self, configuration):
         for name, uri, props in configuration:
-            factory = self.project.sources.getInfoFromUri(uri)
+            factory = self.project.sources.getUri(uri)
             if not factory:
-                raise Exception("Could not find '%s' in medialibrary" % name)
+                raise Exception("Could not find '%s' in sourcelist" % name)
 
             if not props:
                 continue
@@ -653,13 +653,13 @@ class TestSeeking(Base):
     steps_count = 0
     cur_pos = 0
 
-    def _startSeeking(self, interval, steps_count=10):
+    def _startSeeking(self, steps_count):
         assert steps_count > 1
         self.count = 0
         self.steps_count = steps_count
         self.positions = 0
         self.runner.project.pipeline.connect("position", self._positionCb)
-        gobject.timeout_add(interval, self._seekTimeoutCb)
+        gobject.idle_add(self._seekTimeoutCb)
 
     def _seekTimeoutCb(self):
         if self.count < self.steps_count:
@@ -687,8 +687,7 @@ class TestSeeking(Base):
         self.runner.loadConfiguration(config)
 
         def timelineConfigured(runner):
-            self._startSeeking(100, 10)
-
+            self._startSeeking(10)
         self.runner.connect("timeline-configured", timelineConfigured)
         self.runner.run()
 
