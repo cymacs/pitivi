@@ -116,7 +116,7 @@ class TestWatchdog(TestCase):
 class Configuration(object):
 
     def __init__(self):
-        # A list of (name, uri, props) tuples.
+        # A list of [name, uri, props].
         self.sources = []
         self._sources_by_name = {}
         self._bad_sources_names = set()
@@ -134,27 +134,16 @@ class Configuration(object):
     def addSource(self, name, uri, props=None, error=False):
         if name in self._sources_by_name:
             raise Exception("Duplicate source: '%d' already defined" % name)
-        source = (name, uri, props)
+        source = [name, uri, props]
         self.sources.append(source)
-        self._sources_by_name[name] = uri, props
+        self._sources_by_name[name] = source
 
     def updateSource(self, name, uri=None, props=None):
-        def findSource(name):
-            for i, source in enumerate(self.sources):
-                if source[0] == name:
-                    return i
-            raise Exception("Source %s not in configuration" %
-                name)
-
-        i = findSource(name)
-        name, orig_uri, orig_props = self.sources[i]
-        if not uri:
-            uri = orig_uri
+        source = self._sources_by_name[name]
+        if uri:
+            source[1] = uri
         if props:
-            orig_props.update(props)
-
-        self.sources[i] = (name, uri, orig_props)
-        self._sources_by_name[name] = (uri, orig_props)
+            source[2].update(props)
 
     def addBadSource(self, name, uri):
         self.addSource(name, uri)
