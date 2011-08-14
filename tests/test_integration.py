@@ -118,8 +118,8 @@ class Configuration(object):
     def __init__(self):
         # A list of (name, uri, props) tuples.
         self.sources = []
+        self._sources_by_name = {}
         self._bad_sources_names = set()
-        self.source_map = {}
 
     def clone(self):
         ret = Configuration()
@@ -132,10 +132,11 @@ class Configuration(object):
         return ret
 
     def addSource(self, name, uri, props=None, error=False):
-        if name in self.source_map:
+        if name in self._sources_by_name:
             raise Exception("Duplicate source: '%d' already defined" % name)
-        self.sources.append((name, uri, props))
-        self.source_map[name] = uri, props
+        source = (name, uri, props)
+        self.sources.append(source)
+        self._sources_by_name[name] = uri, props
 
     def updateSource(self, name, uri=None, props=None):
         def findSource(name):
@@ -153,7 +154,7 @@ class Configuration(object):
             orig_props.update(props)
 
         self.sources[i] = (name, uri, orig_props)
-        self.source_map[name] = (uri, orig_props)
+        self._sources_by_name[name] = (uri, orig_props)
 
     def addBadSource(self, name, uri):
         self.addSource(name, uri)
