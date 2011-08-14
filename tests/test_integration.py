@@ -335,11 +335,10 @@ class Brush(Signallable):
         "scrub-done": [],
     }
 
-    def __init__(self, runner, delay=100, maxtime=2 * 60 * 60, maxpriority=10):
+    def __init__(self, runner, maxtime=2 * 60 * 60, maxpriority=10):
         self.context = None
         self.max_priority = maxpriority
         self.max_time = maxtime
-        self.delay = delay
         self.runner = runner
         self._steps = deque()
 
@@ -354,7 +353,8 @@ class Brush(Signallable):
 
     def scrub(self, context):
         self.context = context
-        gobject.timeout_add(self.delay, self._scrubTimeoutCb)
+        priority = gobject.PRIORITY_DEFAULT_IDLE * 2
+        gobject.idle_add(self._scrubTimeoutCb, priority=priority)
 
     def _scrubTimeoutCb(self):
         self.runner.watchdog.keepAlive()
