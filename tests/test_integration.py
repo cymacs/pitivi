@@ -547,9 +547,6 @@ class TestBasic(Base):
             brush.addStep(10 * gst.SECOND, 1)
             brush.scrub(context)
 
-        def scrubStep(brush, time, priority):
-            pass
-
         def scrubDone(brush):
             final.matches(self.runner)
             self.runner.shutDown()
@@ -558,7 +555,6 @@ class TestBasic(Base):
         self.runner.connect("timeline-configured", timelineConfigured)
 
         brush = Brush(self.runner)
-        brush.connect("scrub-step", scrubStep)
         brush.connect("scrub-done", scrubDone)
 
         self.runner.run()
