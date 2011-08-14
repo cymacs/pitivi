@@ -335,18 +335,28 @@ class Brush(Signallable):
         "scrub-done": [],
     }
 
-    def __init__(self, runner, maxtime=2 * 60 * 60, maxpriority=10):
+    def __init__(self, runner):
         self.context = None
-        self.max_priority = maxpriority
-        self.max_time = maxtime
         self.runner = runner
         self._steps = deque()
 
-    def addSteps(self, steps_count):
-        for count in xrange(steps_count):
-            time = self.max_time * count / steps_count
-            priority = self.max_priority * count / (steps_count - 1)
-            self.addStep(time, priority)
+    def addSteps(self, steps_count,
+            min_time=0, max_time=2 * 60 * 60,
+            min_priority=0, max_priority=10):
+        """Add a number of steps between the specified limits (low->high)."""
+        self.addStep(min_time, min_priority)
+        # We already added one step, so the deltas will have to be split into
+        # (steps_count - 1) intervals, so the last step will be the max.
+        time_delta = max_time - min_time
+        priority_delta = max_priority - min_priority
+        # Do we have more than one step?
+        for count in xrange(1, steps_count):
+            # The position in the timeline.
+            position = min_time + time_delta * count / (steps_count - 1)
+            # The priority identifies the channel on which the operation
+            # will take place.
+            priority = min_priority + priority_delta * count / (steps_count - 1)
+            self.addStep(position, priority)
 
     def addStep(self, time, priority):
         self._steps.append((time, priority))
