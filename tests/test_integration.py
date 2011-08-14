@@ -698,6 +698,29 @@ class TestSeeking(Base):
         self.runner.connect("timeline-configured", timelineConfigured)
         self.runner.run()
 
+    def testSeekingToSamePosition(self):
+        config = Configuration()
+        clips_count = 2
+        for i in xrange(0, clips_count):
+            config.addSource("clip%d" % i, self.video_uri, {
+                "start": i * gst.SECOND,
+                "duration": gst.SECOND,
+                "priority": i % 2,
+            })
+        self.runner.loadConfiguration(config)
+
+        def timelineConfigured(runner):
+            timeline_duration = self.runner.timeline.duration
+            self.positions.append(0)
+            self.positions.append(0)
+            self.positions.append(timeline_duration / 2)
+            self.positions.append(timeline_duration / 2)
+            self.positions.append(timeline_duration)
+            self.positions.append(timeline_duration)
+            self._startSeeking()
+        self.runner.connect("timeline-configured", timelineConfigured)
+        self.runner.run()
+
 
 class TestRippleExtensive(Base):
     """Test suite for ripple editing minutia and corner-cases"""
