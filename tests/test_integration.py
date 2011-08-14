@@ -459,9 +459,9 @@ class TestBasic(Base):
         # Make sure the sources have not been added to the timeline.
         self.assertFalse(hasattr(self.runner, "object1"))
         self.assertFalse(hasattr(self.runner, "object2"))
-        self.failUnlessEqual(self.runner.factories,
-                             set((self.video_uri, self.audio_uri)))
-        self.failUnlessEqual(self.runner.errors, set((self.unexisting_uri,)))
+        self.assertEqual(self.runner.factories,
+                         set((self.video_uri, self.audio_uri)))
+        self.assertEqual(self.runner.errors, set((self.unexisting_uri,)))
 
     def testConfigureTimeline(self):
 
@@ -669,13 +669,13 @@ class TestSeeking(Base):
             self.seeks_count += 1
             self.runner.project.pipeline.seek(self.positions[0])
             return True
-        self.failUnlessEqual(self.positions_count, self.seeks_count)
+        self.assertEqual(self.positions_count, self.seeks_count)
         self.runner.shutDown()
         return False
 
     def _positionCb(self, pipeline, position):
         self.positions_count += 1
-        self.failUnlessEqual(position, self.positions.popleft())
+        self.assertEqual(position, self.positions.popleft())
 
     def testSeeking(self):
         config = Configuration()
@@ -884,13 +884,13 @@ class TestTransitions(Base):
 
             tr = self.runner.timeline_video_tracks[0].transitions[(a, b)]
 
-            self.failUnlessEqual(b.start, start)
-            self.failUnlessEqual(a.start + a.duration - start, duration)
-            self.failUnlessEqual(tr.start, start)
-            self.failUnlessEqual(tr.duration, duration)
-            self.failUnlessEqual(tr.priority, 0)
-            self.failUnlessEqual(a.priority, 0)
-            self.failUnlessEqual(b.priority, 0)
+            self.assertEqual(b.start, start)
+            self.assertEqual(a.start + a.duration - start, duration)
+            self.assertEqual(tr.start, start)
+            self.assertEqual(tr.duration, duration)
+            self.assertEqual(tr.priority, 0)
+            self.assertEqual(a.priority, 0)
+            self.assertEqual(b.priority, 0)
             nextMove()
 
         self.runner.loadConfiguration(initial)
@@ -950,8 +950,7 @@ class TestTransitions(Base):
                 self.runner.shutDown()
 
         def scrubDone(brush):
-            self.failUnlessEqual(self.runner.timeline_video_tracks[0].transitions,
-                {})
+            self.assertEqual(self.runner.timeline_video_tracks[0].transitions, {})
             initial.matches(self.runner)
             nextMove()
 
@@ -1116,7 +1115,7 @@ class TestTransitions(Base):
                                  getattr(self.runner.timeline_video_tracks[0], b))
                                 for a, b in trans])
 
-                self.failUnlessEqual(set(self.runner.timeline_video_tracks[0].transitions.keys()),
+                self.assertEqual(set(self.runner.timeline_video_tracks[0].transitions.keys()),
                     expected)
             nextMove()
 
