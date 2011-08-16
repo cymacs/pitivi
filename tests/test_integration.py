@@ -163,9 +163,9 @@ class Configuration(object):
 
     def matches(self, instance_runner):
         for name, uri, props in self.getGoodSources():
-            if not name in instance_runner.timelineObjects:
+            if not name in instance_runner.timeline_objects_by_name:
                 raise Exception("Project missing source %s" % name)
-            timelineObject = instance_runner.timelineObjects[name]
+            timelineObject = instance_runner.timeline_objects_by_name[name]
             if timelineObject.factory.uri != uri:
                 raise Exception("%s has wrong factory type!" % name)
             if timelineObject:
@@ -176,7 +176,7 @@ class Configuration(object):
                             actual, value))
 
         names = set((source[0] for source in self.getGoodSources()))
-        timelineObjects = set(instance_runner.timelineObjects.iterkeys())
+        timelineObjects = set(instance_runner.timeline_objects_by_name.iterkeys())
         if names != timelineObjects:
             raise Exception("Project has extra sources: %r" % (timelineObjects -
                 names))
@@ -200,14 +200,15 @@ class InstanceRunner(Signallable):
     def __init__(self, instance):
         self.instance = instance
         self.watchdog = WatchDog(instance.mainloop, timeout=10000)
-        self.factories = set()
+        self.used_factory_uris = set()
         self.errors = set()
         self.project = None
         # A pitivi.timeline.timeline.Timeline instance.
         self.timeline = None
         # A map from pitivi.timeline.track.Track to container.
-        self.tracks = {}
-        self.timelineObjects = {}
+        self.containers_by_track = {}
+        # A map from custom name to pitivi.timeline.timeline.TimelineObject.
+        self.timeline_objects_by_name = {}
         # The timeline configuration to be applied when
         # the "new-project-loaded" event is generated.
         self._pending_configuration = None
@@ -241,17 +242,17 @@ class InstanceRunner(Signallable):
             self._loadSources(self._pending_configuration)
 
     def _sourceAdded(self, medialibrary, factory):
-        self.factories.add(factory.uri)
+        self.used_factory_uris.add(factory.uri)
 
     def _discoveryError(self, medialibrary, uri, reason, unused):
         self.errors.add(uri)
 
     def _readyCb(self, soucelist):
         if self._pending_configuration:
-            assert self.factories == self._pending_configuration.getGoodUris()
+            assert self.used_factory_uris == self._pending_configuration.getGoodUris()
             self._setupTimeline(self._pending_configuration)
         else:
-            assert not self.factories
+            assert not self.used_factory_uris
         self.emit("sources-loaded")
 
     def _loadSources(self, configuration):
@@ -272,7 +273,7 @@ class InstanceRunner(Signallable):
             self.timeline_video_tracks.append(container)
         else:
             raise Exception("Unknown type of track stream: %s" % stream_type)
-        self.tracks[track] = container
+        self.containers_by_track[track] = container
         container.transitions = {}
         track.connect("transition-added", self._transitionAddedCb, container)
         track.connect("transition-removed", self._transitionRemovedCb,
@@ -292,13 +293,13 @@ class InstanceRunner(Signallable):
             if not factory:
                 raise Exception("Could not find '%s' in sourcelist" % name)
 
-            timelineObject = self.timeline.addSourceFactory(factory)
+            timeline_object = self.timeline.addSourceFactory(factory)
             for prop, value in props.iteritems():
-                setattr(timelineObject, prop, value)
-            self.timelineObjects[name] = timelineObject
-            for trackObject in timelineObject.track_objects:
-                container = self.tracks[trackObject.track]
-                setattr(container, name, trackObject)
+                setattr(timeline_object, prop, value)
+            self.timeline_objects_by_name[name] = timeline_object
+            for track_object in timeline_object.track_objects:
+                container = self.containers_by_track[track_object.track]
+                setattr(container, name, track_object)
 
         self.emit("timeline-configured")
 
@@ -469,7 +470,7 @@ class TestBasic(Base):
         # Make sure the sources have not been added to the timeline.
         self.assertFalse(hasattr(self.runner, "object1"))
         self.assertFalse(hasattr(self.runner, "object2"))
-        self.assertEqual(self.runner.factories,
+        self.assertEqual(self.runner.used_factory_uris,
                          set((self.video_uri, self.audio_uri)))
         self.assertEqual(self.runner.errors, set((self.unexisting_uri,)))
 
@@ -500,8 +501,8 @@ class TestBasic(Base):
         self.runner.connect("timeline-configured", timelineConfigured)
         self.runner.run()
 
-        self.assertTrue(self.runner.timelineObjects['object1'])
-        self.assertTrue(self.runner.timelineObjects['object2'])
+        self.assertTrue(self.runner.timeline_objects_by_name['object1'])
+        self.assertTrue(self.runner.timeline_objects_by_name['object2'])
         self.assertTrue(self.runner.timeline_video_tracks[0].object1)
         self.assertTrue(self.runner.timeline_audio_tracks[0].object2)
 
