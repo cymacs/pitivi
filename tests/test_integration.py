@@ -275,6 +275,7 @@ class InstanceRunner(Signallable):
             raise Exception("Unknown type of track stream: %s" % stream_type)
         self.containers_by_track[track] = container
         container.transitions = {}
+        container.track_objects_by_name = {}
         track.connect("transition-added", self._transitionAddedCb, container)
         track.connect("transition-removed", self._transitionRemovedCb,
             container)
@@ -299,7 +300,8 @@ class InstanceRunner(Signallable):
             self.timeline_objects_by_name[name] = timeline_object
             for track_object in timeline_object.track_objects:
                 container = self.containers_by_track[track_object.track]
-                setattr(container, name, track_object)
+                assert name not in container.track_objects_by_name
+                container.track_objects_by_name[name] = track_object
 
         self.emit("timeline-configured")
 
@@ -503,8 +505,8 @@ class TestBasic(Base):
 
         self.assertTrue(self.runner.timeline_objects_by_name['object1'])
         self.assertTrue(self.runner.timeline_objects_by_name['object2'])
-        self.assertTrue(self.runner.timeline_video_tracks[0].object1)
-        self.assertTrue(self.runner.timeline_audio_tracks[0].object2)
+        self.assertTrue(self.runner.timeline_video_tracks[0].track_objects_by_name["object1"])
+        self.assertTrue(self.runner.timeline_audio_tracks[0].track_objects_by_name["object2"])
 
     def testMoveSources(self):
         initial = Configuration()
@@ -542,8 +544,8 @@ class TestBasic(Base):
 
         def timelineConfigured(runner):
             context = MoveContext(self.runner.timeline,
-                self.runner.timeline_video_tracks[0].object1,
-                set((self.runner.timeline_audio_tracks[0].object2,)))
+                self.runner.timeline_video_tracks[0].track_objects_by_name["object1"],
+                set((self.runner.timeline_audio_tracks[0].track_objects_by_name["object2"],)))
             brush.addSteps(10)
             brush.addStep(10 * gst.SECOND, 1)
             brush.scrub(context)
@@ -584,7 +586,7 @@ class TestBasic(Base):
         def timelineConfigured(runner):
             initial.matches(self.runner)
             context = MoveContext(self.runner.timeline,
-                self.runner.timeline_video_tracks[0].clip1, set())
+                self.runner.timeline_video_tracks[0].track_objects_by_name["clip1"], set())
             context.setMode(context.RIPPLE)
             brush.addStep(11 * gst.SECOND, 0)
             brush.scrub(context)
@@ -639,7 +641,7 @@ class TestBasic(Base):
 
         def timelineConfigured(runner):
             context = TrimStartContext(self.runner.timeline,
-                self.runner.timeline_video_tracks[0].clip3, set())
+                self.runner.timeline_video_tracks[0].track_objects_by_name["clip3"], set())
             context.setMode(context.RIPPLE)
             brush.addSteps(10)
             brush.addStep(10 * gst.SECOND, 0)
@@ -778,7 +780,7 @@ class TestRippleExtensive(Base):
         # Create the context using a single clip as focus and
         # not specifying any other clips.
         context = MoveContext(self.runner.timeline,
-            getattr(self.runner.timeline_video_tracks[0], clipname), set())
+            self.runner.timeline_video_tracks[0].track_objects_by_name[clipname], set())
         context.snap(False)
         context.setMode(context.RIPPLE)
         self.context = context
@@ -875,8 +877,8 @@ class TestTransitions(Base):
             if moves:
                 self._cur_move = moves.pop(0)
                 context = MoveContext(self.runner.timeline,
-                    self.runner.timeline_video_tracks[0].object2,
-                        set([self.runner.timeline_video_tracks[0].object2]))
+                    self.runner.timeline_video_tracks[0].track_objects_by_name["object2"],
+                        set([self.runner.timeline_video_tracks[0].track_objects_by_name["object2"]]))
                 brush.addSteps(10)
                 time, priority = self._cur_move
                 brush.addStep(time, priority)
@@ -886,8 +888,8 @@ class TestTransitions(Base):
 
         def scrubDone(brush):
             a, b, start, duration, priority = expected.pop(0)
-            a = getattr(self.runner.timeline_video_tracks[0], a)
-            b = getattr(self.runner.timeline_video_tracks[0], b)
+            a = self.runner.timeline_video_tracks[0].track_objects_by_name[a]
+            b = self.runner.timeline_video_tracks[0].track_objects_by_name[b]
 
             tr = self.runner.timeline_video_tracks[0].transitions[(a, b)]
 
@@ -948,8 +950,8 @@ class TestTransitions(Base):
                 self._cur_move = moves.pop(0)
                 other, start, priority = self._cur_move
                 context = MoveContext(self.runner.timeline,
-                    self.runner.timeline_video_tracks[0].object2,
-                        set([getattr(self.runner.timeline_video_tracks[0], other)]))
+                        self.runner.timeline_video_tracks[0].track_objects_by_name["object2"],
+                        set([self.runner.timeline_video_tracks[0].track_objects_by_name[other]]))
                 brush.addSteps(10)
                 brush.addStep(start, priority)
                 brush.scrub(context)
@@ -1103,7 +1105,7 @@ class TestTransitions(Base):
                 print "cur_move: %d/%d" % (nmoves - len(moves) + 1, nmoves)
                 self._cur_move = moves.pop(0)
                 context, focus, start, priority, config, trans = self._cur_move
-                obj = getattr(self.runner.timeline_video_tracks[0], focus)
+                obj = self.runner.timeline_video_tracks[0].track_objects_by_name[focus]
                 context = context(self.runner.timeline, obj, set())
                 brush.addSteps(10)
                 brush.addStep(start, priority)
@@ -1118,8 +1120,8 @@ class TestTransitions(Base):
                 config.matches(self.runner)
 
             if trans:
-                expected = set([(getattr(self.runner.timeline_video_tracks[0], a),
-                                 getattr(self.runner.timeline_video_tracks[0], b))
+                expected = set([(self.runner.timeline_video_tracks[0].track_objects_by_name[a],
+                                 self.runner.timeline_video_tracks[0].track_objects_by_name[b])
                                 for a, b in trans])
 
                 self.assertEqual(set(self.runner.timeline_video_tracks[0].transitions.keys()),
