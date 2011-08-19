@@ -197,12 +197,13 @@ class InstanceRunner(Signallable):
         "timeline-configured": [],
     }
 
-    def __init__(self, instance):
+    def __init__(self, instance, project_name):
         self.instance = instance
         self.watchdog = WatchDog(instance.mainloop, timeout=10000)
         self.used_factory_uris = set()
         self.errors = set()
         self.project = None
+        self.project_name = project_name
         # A pitivi.timeline.timeline.Timeline instance.
         self.timeline = None
         # A map from pitivi.timeline.track.Track to container.
@@ -230,6 +231,7 @@ class InstanceRunner(Signallable):
 
     def _newProjectLoadedCb(self, instance, project):
         self.project = instance.current
+        self.project.name = self.project_name
         self.timeline = self.project.timeline
         for track in self.timeline.tracks:
             self._trackAddedCb(self.timeline, track)
@@ -408,7 +410,7 @@ class Base(TestCase):
                 "The application should not have a project yet!")
         self.assertEquals(pitivi.instance.PiTiVi, self.ptv,
                 "The application instance was not set correctly!")
-        self.runner = InstanceRunner(self.ptv)
+        self.runner = InstanceRunner(self.ptv, project_name=self.id())
         self.video_uri = Base._getMediaFile("video.mkv")
         self.audio_uri = Base._getMediaFile("audio.ogg")
         self.unexisting_uri = Base._getMediaFile("unexisting.avi")
