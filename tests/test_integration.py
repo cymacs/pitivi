@@ -341,7 +341,7 @@ class Brush(Signallable):
         self._steps = deque()
 
     def addSteps(self, steps_count,
-            min_time=0, max_time=2 * 60 * 60,
+            min_time=0, max_time=2 * 60 * 60 * gst.SECOND,
             min_priority=0, max_priority=10):
         """Add a number of steps between the specified limits (low->high)."""
         self.addStep(min_time, min_priority)
