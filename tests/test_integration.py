@@ -734,7 +734,21 @@ class TestSeeking(Base):
 
 
 class TestRippleExtensive(Base):
-    """Test suite for ripple editing minutia and corner-cases"""
+    """Test suite for ripple move operations."""
+
+    class Scenario(object):
+        """A scenario involving ripple-moving a specific timeline clip.
+
+        @ivar position: The final position where the clip will be ripple-moved.
+        @ivar priority: The final priority where the clip will be ripple-moved.
+        @ivar final_configuration: The expected final configuration of
+          the timeline after the last ripple-move operation.
+        """
+        def __init__(self, clip_index, position, priority, final_configuration):
+            self.clip_index = clip_index
+            self.position = position
+            self.priority = priority
+            self.final_configuration = final_configuration
 
     def setUp(self):
         Base.setUp(self)
@@ -742,18 +756,22 @@ class TestRippleExtensive(Base):
         # second long.
         self.initial = Configuration()
         for i in xrange(0, 10):
-            self.initial.addSource('clip%d' % i, self.video_uri,
-                {'start': gst.SECOND * i, 'duration': gst.SECOND,
-                    'priority': i % 2})
+            props = {'start': gst.SECOND * i,
+                     'duration': gst.SECOND,
+                     'priority': i % 2}
+            self.initial.addSource('clip%d' % i, self.video_uri, props)
         # Create a list of 10 scenarios.
-        self.finals = []
-        for i in xrange(0, 10):
-            # we're going to repeat the same operation using each clip as the
-            # focus of the editing context. We create one final
-            # configuration for the expected result of each scenario.
-            final = Configuration()
+        self.scenarios = deque()
+        for scenario_index in xrange(0, 10):
+            # The timeline clip which is moved around in this scenario.
+            clip_index = scenario_index
+            # The final position of the clip in this scenario.
+            final_position = gst.SECOND * (clip_index + 10)
+            final_priority = (clip_index % 2) + 1
+            # The final configuration of the timeline for this scenario.
+            final_config = Configuration()
             for j in xrange(0, 10):
-                if j < i:
+                if j < clip_index:
                     start = gst.SECOND * j
                     priority = j % 2
                 else:
@@ -762,8 +780,10 @@ class TestRippleExtensive(Base):
                 props = {'start': start,
                          'duration': gst.SECOND,
                          'priority': priority}
-                final.addSource('clip%d' % j, self.video_uri, props)
-            self.finals.append(final)
+                final_config.addSource('clip%d' % j, self.video_uri, props)
+            scenario = TestRippleExtensive.Scenario(
+                    clip_index, final_position, final_priority, final_config)
+            self.scenarios.append(scenario)
         self.context = None
         self.brush = Brush(self.runner)
         self.runner.loadConfiguration(self.initial)
@@ -773,11 +793,12 @@ class TestRippleExtensive(Base):
     def timelineConfiguredCb(self, runner):
         """Handle the initial configuration of the timeline."""
         # Kick off the test by starting the first scenario.
-        self.runScenario(0)
+        self.runNextScenario()
 
-    def runScenario(self, scenario_index):
-        self.current_scenario_index = scenario_index
-        clipname = "clip%d" % self.current_scenario_index
+    def runNextScenario(self):
+        self.scenario = self.scenarios.popleft()
+        clipname = "clip%d" % self.scenario.clip_index
+        print "SCENARIO %s" % self.scenario.clip_index
         # Create the context using a single clip as focus and
         # not specifying any other clips.
         context = MoveContext(self.runner.timeline,
@@ -785,32 +806,30 @@ class TestRippleExtensive(Base):
         context.snap(False)
         context.setMode(context.RIPPLE)
         self.context = context
-        # this isn't a method, but an attribute that will be set by specific
-        # test cases
-        self.scrub_func(context,
-                        (self.current_scenario_index + 10) * gst.SECOND,
-                        (self.current_scenario_index % 2) + 1)
+        # scrub_func is an attribute that will be set by specific test cases.
+        print "Moving %s to position %s, priority %s" % (clipname, self.scenario.position, self.scenario.priority)
+        self.scrub_func(context, self.scenario.position, self.scenario.priority)
 
     # Handle the finish of a scrub operation.
     def scenarioDoneCb(self, brush):
-        scenario_expected_config = self.finals[self.current_scenario_index]
         self.context.finish()
-        try:
-            scenario_expected_config.matches(self.runner)
-        except Exception, e:
-            raise Exception("Scenario failed: %s" % self.current_scenario_index, e)
-        # Reset the timeline.
+        # Make sure the actual timeline config matches the expected config.
+        self.scenario.final_configuration.matches(self.runner)
+        # Reset the timeline to the initial config.
         restore = MoveContext(self.runner.timeline, self.context.focus, set())
         restore.setMode(restore.RIPPLE)
-        restore.editTo(self.current_scenario_index * gst.SECOND,
-                       self.current_scenario_index % 2)
+        initial_clip_props = self.initial.sources[self.scenario.clip_index][2]
+        initial_position = initial_clip_props["start"]
+        initial_priority = initial_clip_props["priority"]
+        restore.editTo(initial_position, initial_priority)
         restore.finish()
+        # Make sure the timeline was correctly reset to the initial config.
         self.initial.matches(self.runner)
-        if self.current_scenario_index + 1 < len(self.finals):
+        if self.scenarios:
             # Kick off the next scenario.
-            self.runScenario(self.current_scenario_index + 1)
+            self.runNextScenario()
         else:
-            # We finished the last scenario. Shut down the application.
+            # No more scenarios available. Shut down the application.
             self.runner.shutDown()
 
     def testRippleMoveComplex(self):
