@@ -840,11 +840,14 @@ class TestRippleExtensive(Base):
         self.scrub_func = rippleMoveComplexScrubFunc
         self.runner.run()
 
-    # FIXME: This test fails for unknown reasons.
     def testRippleMoveComplexMultiple(self):
         # Same as above test, but scrub multiple times.
         def rippleMoveComplexScrubFunc(context, position, priority):
-            self.brush.addSteps(100)
+            # The move operation can fail because of the overlap prevention.
+            # That's why we have the limits below, to avoid moving the clip
+            # over the existing clips with a start position < clip.position.
+            self.brush.addSteps(10, min_time=position)
+            self.brush.addSteps(10, min_priority=2)
             self.brush.addStep(position, priority)
             self.brush.scrub(context)
         self.scrub_func = rippleMoveComplexScrubFunc
