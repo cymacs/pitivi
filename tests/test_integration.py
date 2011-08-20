@@ -767,12 +767,12 @@ class TestRippleExtensive(Base):
         self.context = None
         self.brush = Brush(self.runner)
         self.runner.loadConfiguration(self.initial)
-        self.runner.connect("timeline-configured", self.timelineConfigured)
+        self.runner.connect("timeline-configured", self.timelineConfiguredCb)
         self.brush.connect("scrub-done", self.scenarioDoneCb)
 
-    # when the timeline is configured, kick off the test by starting the
-    # first scenario
-    def timelineConfigured(self, runner):
+    def timelineConfiguredCb(self, runner):
+        """Handle the initial configuration of the timeline."""
+        # Kick off the test by starting the first scenario.
         self.runScenario(0)
 
     def runScenario(self, scenario_index):
