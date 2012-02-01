@@ -117,7 +117,7 @@ class TimelineObjectAdded(UndoableAction):
 
     def do(self):
         for track_object, track in self.tracks.iteritems():
-            track.addTrackObject(track_object)
+            track.add_object(track_object)
 
         self.layer.add_object(self.timeline_object)
         self._done()
@@ -135,14 +135,14 @@ class TimelineObjectRemoved(UndoableAction):
                 for track_object in timeline_object.get_track_objects())
 
     def do(self):
-        self.timeline.removeTimelineObject(self.timeline_object, deep=True)
+        self.timeline.remove_object(self.timeline_object)
         self._done()
 
     def undo(self):
         for track_object, track in self.tracks.iteritems():
-            track.addTrackObject(track_object)
+            track.add_object(track_object)
 
-        self.timeline.addTimelineObject(self.timeline_object)
+        self.timeline.add_object(self.timeline_object)
 
         self._undone()
 
@@ -225,12 +225,11 @@ class TimelineLogObserver(object):
     interpolatorKeyframeChangedAction = InterpolatorKeyframeChanged
     activePropertyChangedAction = ActivePropertyChanged
 
-    def __init__(self, log, instance):
+    def __init__(self, log):
         self.log = log
         self.timeline_object_property_trackers = {}
         self.interpolator_keyframe_trackers = {}
         self.effect_properties_tracker = EffectGstElementPropertyChangeTracker(log)
-        self.app = instance
 
     def startObserving(self, timeline):
         self._connectToTimeline(timeline)
@@ -244,10 +243,11 @@ class TimelineLogObserver(object):
 
     def stopObserving(self, timeline):
         self._disconnectFromTimeline(timeline)
-        for timeline_object in timeline.timeline_objects:
-            self._disconnectFromTimelineObject(timeline_object)
-            for track_object in timeline_object.track_objects:
-                self._disconnectFromTrackObject(track_object)
+        for layer in timeline.get_layers():
+            for timeline_object in layer.get_objects():
+                self._disconnectFromTimelineObject(timeline_object)
+                for track_object in timeline_object.get_track_objects():
+                    self._disconnectFromTrackObject(track_object)
 
     def _connectToTimeline(self, timeline):
         for layer in timeline.get_layers():
@@ -283,7 +283,7 @@ class TimelineLogObserver(object):
             self.effect_properties_tracker.addEffect(track_object)
 
     def _effectAddedCb(self, tlobj, track_object):
-        action = self.trackEffectAddAction(tlobj, self.app, track_object, self.effect_properties_tracker)
+        action = self.trackEffectAddAction(tlobj, track_object, self.effect_properties_tracker, self.log)
         #We use the action instead of the track object
         #because the track_object changes when redoing
         track_object.connect("notify::active",

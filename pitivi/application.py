@@ -134,7 +134,7 @@ class Pitivi(Loggable, Signallable):
         self.debug_action_log_observer = DebugActionLogObserver()
         self.debug_action_log_observer.startObserving(self.action_log)
         # TODO reimplement the observing after GES port
-        self.timelineLogObserver = TimelineLogObserver(self.action_log, instance)
+        self.timelineLogObserver = TimelineLogObserver(self.action_log)
         self.projectLogObserver = ProjectLogObserver(self.action_log)
         self.medialibrary_log_observer = MediaLibraryLogObserver(self.action_log)
 
@@ -198,7 +198,7 @@ class Pitivi(Loggable, Signallable):
         return self.emit("closing-project", project)
 
     def _projectManagerProjectClosed(self, projectManager, project):
-        #self.timelineLogObserver.stopObserving(project.timeline)
+        self.timelineLogObserver.stopObserving(project.timeline)
         self.projectLogObserver.stopObserving(project)
         self.current = None
         self.emit("project-closed", project)

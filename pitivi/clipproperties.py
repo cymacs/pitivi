@@ -284,6 +284,8 @@ class EffectProperties(gtk.Expander, gtk.HBox):
         for timeline_object in self.timeline_objects:
             timeline_object.disconnect_by_func(self._trackObjectAddedCb)
             timeline_object.disconnect_by_func(self._trackRemovedRemovedCb)
+            timeline_object.disconnect_by_func(self._trackEffectAddedCb)
+            timeline_object.disconnect_by_func(self._trackEffectRemovedCb)
 
         self.selected_effects = selection.getSelectedTrackEffects()
 
@@ -292,6 +294,8 @@ class EffectProperties(gtk.Expander, gtk.HBox):
             for timeline_object in self.timeline_objects:
                 timeline_object.connect("track-object-added", self._trackObjectAddedCb)
                 timeline_object.connect("track-object-removed", self._trackRemovedRemovedCb)
+                timeline_object.connect("effect-added", self._trackEffectAddedCb)
+                timeline_object.connect("effect-removed", self._trackEffectRemovedCb)
             self.set_sensitive(True)
         else:
             self.timeline_objects = []
@@ -305,6 +309,18 @@ class EffectProperties(gtk.Expander, gtk.HBox):
             self._updateAll()
 
     def  _trackRemovedRemovedCb(self, unused_timeline_object, track_object):
+        if isinstance(track_object, ges.TrackEffect):
+            selec = self.timeline.selection.getSelectedTrackEffects()
+            self.selected_effects = selec
+            self._updateAll()
+
+    def  _trackEffectAddedCb(self, unused_timeline_object, track_object):
+        if isinstance(track_object, ges.TrackEffect):
+            selec = self.timeline.selection.getSelectedTrackEffects()
+            self.selected_effects = selec
+            self._updateAll()
+
+    def  _trackEffectRemovedCb(self, unused_timeline_object, track_object):
         if isinstance(track_object, ges.TrackEffect):
             selec = self.timeline.selection.getSelectedTrackEffects()
             self.selected_effects = selec
@@ -334,14 +350,15 @@ class EffectProperties(gtk.Expander, gtk.HBox):
 
     def addEffectToCurrentSelection(self, bin_desc):
         if self.timeline_objects:
-            media_type = self.app.effects.getFactoryFromName(bin_desc).media_type
 
             # Trying to apply effect only on the first object of the selection
             tlobj = self.timeline_objects[0]
 
             # Checking that this effect can be applied on this track object
             # Which means, it has the corresponding media_type
-            add_effect(tlobj, bin_desc, self.app)
+            self.app.action_log.begin("add effect")
+            add_effect(tlobj, bin_desc)
+            self.app.action_log.commit()
             self._updateAll()
             self._seeker.flush()
 
@@ -352,7 +369,9 @@ class EffectProperties(gtk.Expander, gtk.HBox):
     def _dragDropCb(self, unused, context, unused_x, unused_y,
              unused_timestamp):
         if self._factory:
+            self.app.action_log.begin("add effect")
             self.addEffectToCurrentSelection(self._factory.effectname)
+            self.app.action_log.commit()
         self._factory = None
 
     def _dragLeaveCb(self, unused_layout, unused_context, unused_tstamp):
@@ -636,9 +655,9 @@ class TransformationProperties(gtk.Expander):
                 self._current_tl_obj = None
                 self.zoom_scale.set_value(1.0)
                 self._seeker.flush()
-            self.effect = None
-            self.set_sensitive(False)
-        self._updateBoxVisibility()
+                self.effect = None
+                self.set_sensitive(False)
+            self._updateBoxVisibility()
 
     def _updateBoxVisibility(self):
         if self.get_expanded() and self._current_tl_obj:

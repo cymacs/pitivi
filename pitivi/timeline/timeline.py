@@ -838,7 +838,9 @@ class Timeline(gtk.Table, Loggable, Zoomable):
 
                 # Trying to apply effect only on the first object of the selection
                 tlobj = timeline_objs[0]
-                add_effect(tlobj, bin_desc, self.app)
+                self.app.action_log.begin("add effect")
+                add_effect(tlobj, bin_desc)
+                self.app.action_log.commit()
                 self._factories = None
                 self.seeker.seek(self._position)
 
@@ -1292,7 +1294,7 @@ class Timeline(gtk.Table, Loggable, Zoomable):
         selected = self.timeline.selection.getSelectedTrackObjs()
         for obj in selected:
             keyframe_exists = False
-            position_in_obj = (self._position - obj.start) + obj.in_point
+            position_in_obj = (self._position - obj.get_start()) + obj.get_in_point()
             interpolators = obj.getInterpolators()
             for value in interpolators:
                 interpolator = obj.getInterpolator(value)
