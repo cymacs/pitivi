@@ -24,9 +24,11 @@ QA scenarios """
 
 from unittest import TestCase
 from pitivi.application import FullGuiPitivi
+from pitivi.configure import _get_root_dir
 from pitivi.utils.timeline import MoveContext, TrimStartContext,\
     TrimEndContext
 from pitivi.utils.signal import Signallable
+from pitivi.utils.misc import quote_uri
 from pitivi.stream import AudioStream, VideoStream
 from pitivi.ui.zoominterface import Zoomable
 import pitivi.instance
@@ -34,11 +36,6 @@ import gobject
 import gst
 import os
 import random
-
-base_uri = "file:///" + os.getcwd() + "/media/"
-test1 = base_uri + "test1.ogg"
-test2 = base_uri + "test2.ogg"
-test3 = base_uri + "test3.ogg"
 
 
 class WatchDog(object):
@@ -379,6 +376,11 @@ class Base(TestCase):
     Uses a WatchDog to ensure that test cases will eventually terminate with an
     assertion failure if runtime errors occur inside the mainloop."""
 
+    @staticmethod
+    def _getMediaFile(filename):
+        file_path = os.path.join(_get_root_dir(), "tests", "samples", filename)
+        return quote_uri("file://" + file_path)
+
     def run(self, result):
         self._result = result
         self._num_failures = len(result.failures)
@@ -393,6 +395,9 @@ class Base(TestCase):
         self.assertEquals(pitivi.instance.PiTiVi, self.ptv,
                 "The application instance was not set correctly!")
         self.runner = InstanceRunner(self.ptv)
+        self.video_uri = Base._getMediaFile("video.mkv")
+        self.audio_uri = Base._getMediaFile("audio.ogg")
+        self.unexisting_uri = Base._getMediaFile("unexisting.avi")
 
     def tearDown(self):
         pitivi_instance_exists = bool(pitivi.instance.PiTiVi)
@@ -442,26 +447,27 @@ class TestBasic(Base):
             self.runner.shutDown()
 
         config = Configuration()
-        config.addSource("test1", test1)
-        config.addSource("test2", test2)
-        config.addBadSource("test3", test3)
+        config.addSource("object1", self.video_uri)
+        config.addSource("object2", self.audio_uri)
+        config.addBadSource("object3", self.unexisting_uri)
 
         self.runner.connect("sources-loaded", sourcesLoaded)
         self.runner.loadConfiguration(config)
         self.runner.run()
 
         # Make sure the sources have not been added to the timeline.
-        self.assertFalse(hasattr(self.runner, "test1"))
-        self.assertFalse(hasattr(self.runner, "test2"))
-        self.failUnlessEqual(self.runner.factories, set((test1, test2)))
-        self.failUnlessEqual(self.runner.errors, set((test3,)))
+        self.assertFalse(hasattr(self.runner, "object1"))
+        self.assertFalse(hasattr(self.runner, "object2"))
+        self.failUnlessEqual(self.runner.factories,
+                             set((self.video_uri, self.audio_uri)))
+        self.failUnlessEqual(self.runner.errors, set((self.unexisting_uri,)))
 
     def testConfigureTimeline(self):
 
         config = Configuration()
         config.addSource(
             "object1",
-            test1,
+            self.video_uri,
             {
                 "start": 0,
                 "duration": gst.SECOND,
@@ -469,7 +475,7 @@ class TestBasic(Base):
             })
         config.addSource(
             "object2",
-            test2,
+            self.audio_uri,
             {
                 "start": gst.SECOND,
                 "duration": gst.SECOND,
@@ -492,7 +498,7 @@ class TestBasic(Base):
         initial = Configuration()
         initial.addSource(
             "object1",
-            test1,
+            self.video_uri,
             {
                 "start": 0,
                 "duration": gst.SECOND,
@@ -501,7 +507,7 @@ class TestBasic(Base):
             })
         initial.addSource(
             "object2",
-            test2,
+            self.audio_uri,
             {
                 "start": gst.SECOND,
                 "duration": gst.SECOND,
@@ -510,13 +516,13 @@ class TestBasic(Base):
         final = Configuration()
         final.addSource(
             "object1",
-            test1,
+            self.video_uri,
             {
                 "start": 10 * gst.SECOND,
             })
         final.addSource(
             "object2",
-            test2,
+            self.audio_uri,
             {
                 "start": 11 * gst.SECOND,
                 "priority": 2,
@@ -547,20 +553,20 @@ class TestBasic(Base):
     def testRippleMoveSimple(self):
 
         initial = Configuration()
-        initial.addSource('clip1', test1, {
+        initial.addSource('clip1', self.video_uri, {
             "duration": gst.SECOND,
             "start": gst.SECOND,
             "priority": 2})
-        initial.addSource('clip2', test1, {
+        initial.addSource('clip2', self.video_uri, {
             "duration": gst.SECOND,
             "start": 2 * gst.SECOND,
             "priority": 5})
         final = Configuration()
-        final.addSource('clip1', test1, {
+        final.addSource('clip1', self.video_uri, {
             "duration": gst.SECOND,
             "start": 11 * gst.SECOND,
             "priority": 0})
-        final.addSource('clip2', test1, {
+        final.addSource('clip2', self.video_uri, {
             "duration": gst.SECOND,
             "start": 12 * gst.SECOND,
             "priority": 3})
@@ -585,34 +591,34 @@ class TestBasic(Base):
 
     def testRippleTrimStartSimple(self):
         initial = Configuration()
-        initial.addSource('clip1', test1,
+        initial.addSource('clip1', self.video_uri,
             {
                 "start": gst.SECOND,
                 "duration": gst.SECOND,
             })
-        initial.addSource('clip2', test1,
+        initial.addSource('clip2', self.video_uri,
             {
                 "start": 2 * gst.SECOND,
                 "duration": gst.SECOND,
             })
-        initial.addSource('clip3', test1,
+        initial.addSource('clip3', self.video_uri,
             {
                 "start": 5 * gst.SECOND,
                 "duration": 10 * gst.SECOND,
             })
 
         final = Configuration()
-        final.addSource('clip1', test1,
+        final.addSource('clip1', self.video_uri,
             {
                 "start": 6 * gst.SECOND,
                 "duration": gst.SECOND,
             })
-        final.addSource('clip2', test1,
+        final.addSource('clip2', self.video_uri,
             {
                 "start": 7 * gst.SECOND,
                 "duration": gst.SECOND,
             })
-        final.addSource('clip3', test1,
+        final.addSource('clip3', self.video_uri,
             {
                 "start": 10 * gst.SECOND,
                 "duration": 5 * gst.SECOND,
@@ -642,14 +648,6 @@ class TestSeeking(Base):
     steps = 0
     cur_pos = 0
 
-    config = Configuration()
-    for i in xrange(0, 10):
-        config.addSource("clip%d" % i, test1, {
-            "start": i * gst.SECOND,
-            "duration": gst.SECOND,
-            "priority": i % 2,
-        })
-
     def _startSeeking(self, interval, steps=10):
         self.count = 0
         self.steps = steps
@@ -671,12 +669,17 @@ class TestSeeking(Base):
 
     def _positionCb(self, pipeline, position):
         self.positions += 1
-        self.failUnlessEqual(position,
-            self.cur_pos)
+        self.failUnlessEqual(position, self.cur_pos)
 
     def testSeeking(self):
-
-        self.runner.loadConfiguration(self.config)
+        config = Configuration()
+        for i in xrange(0, 10):
+            config.addSource("clip%d" % i, self.video_uri, {
+                "start": i * gst.SECOND,
+                "duration": gst.SECOND,
+                "priority": i % 2,
+            })
+        self.runner.loadConfiguration(config)
 
         def timelineConfigured(runner):
             self._startSeeking(100, 10)
@@ -686,20 +689,16 @@ class TestSeeking(Base):
 
 
 class TestRippleExtensive(Base):
-
     """Test suite for ripple editing minutia and corner-cases"""
 
-    def __init__(self, unknown):
-        # The following set of tests share common configuration, harness, and
-        # business logic. We create the configurations in the constructor to
-        # avoid having to re-create them for every test.
-
+    def setUp(self):
+        Base.setUp(self)
         # create a seqence of adjacent clips in staggered formation, each one
         # second long
         self.initial = Configuration()
         self.finals = []
         for i in xrange(0, 10):
-            self.initial.addSource('clip%d' % i, test1,
+            self.initial.addSource('clip%d' % i, self.video_uri,
                 {'start': gst.SECOND * i, 'duration': gst.SECOND,
                     'priority': i % 2})
             # we're going to repeat the same operation using each clip as the
@@ -708,20 +707,16 @@ class TestRippleExtensive(Base):
             final = Configuration()
             for j in xrange(0, 10):
                 if j < i:
-                    final.addSource('clip%d' % j, test1,
+                    final.addSource('clip%d' % j, self.video_uri,
                         {'start': gst.SECOND * j,
                           'duration': gst.SECOND,
                           'priority': j % 2})
                 else:
-                    final.addSource('clip%d' % j, test1,
+                    final.addSource('clip%d' % j, self.video_uri,
                         {'start': gst.SECOND * (j + 10),
                           'duration': gst.SECOND,
                           'priority': (j % 2) + 1})
             self.finals.append(final)
-        Base.__init__(self, unknown)
-
-    def setUp(self):
-        Base.setUp(self)
         self.cur = 0
         self.context = None
         self.brush = Brush(self.runner)
@@ -790,7 +785,7 @@ class TestTransitions(Base):
         initial = Configuration()
         initial.addSource(
             "object1",
-            test1,
+            self.video_uri,
             {
                 "start": 0,
                 "duration": 5 * gst.SECOND,
@@ -798,7 +793,7 @@ class TestTransitions(Base):
             })
         initial.addSource(
             "object2",
-            test1,
+            self.video_uri,
             {
                 "start": 5 * gst.SECOND,
                 "duration": 5 * gst.SECOND,
@@ -806,7 +801,7 @@ class TestTransitions(Base):
             })
         initial.addSource(
             "object3",
-            test1,
+            self.video_uri,
             {
                 "start": 10 * gst.SECOND,
                 "duration": 5 * gst.SECOND,
@@ -865,7 +860,7 @@ class TestTransitions(Base):
         initial = Configuration()
         initial.addSource(
             "object1",
-            test1,
+            self.video_uri,
             {
                 "start": 0,
                 "duration": 5 * gst.SECOND,
@@ -873,7 +868,7 @@ class TestTransitions(Base):
             })
         initial.addSource(
             "object2",
-            test1,
+            self.video_uri,
             {
                 "start": 5 * gst.SECOND,
                 "duration": 5 * gst.SECOND,
@@ -881,7 +876,7 @@ class TestTransitions(Base):
             })
         initial.addSource(
             "object3",
-            test1,
+            self.video_uri,
             {
                 "start": 10 * gst.SECOND,
                 "duration": 5 * gst.SECOND,
@@ -925,7 +920,7 @@ class TestTransitions(Base):
         initial = Configuration()
         initial.addSource(
             "object1",
-            test1,
+            self.video_uri,
             {
                 "start": 0,
                 "duration": 5 * gst.SECOND,
@@ -933,7 +928,7 @@ class TestTransitions(Base):
             })
         initial.addSource(
             "object2",
-            test1,
+            self.video_uri,
             {
                 "start": 5 * gst.SECOND,
                 "duration": 3 * gst.SECOND,
@@ -941,7 +936,7 @@ class TestTransitions(Base):
             })
         initial.addSource(
             "object3",
-            test1,
+            self.video_uri,
             {
                 "start": 8 * gst.SECOND,
                 "duration": 5 * gst.SECOND,
