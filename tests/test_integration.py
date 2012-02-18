@@ -281,8 +281,7 @@ class InstanceRunner(Signallable):
         for name, uri, props in configuration:
             factory = self.project.sources.getInfoFromUri(uri)
             if not factory:
-                raise Exception("Could not find '%s' in medialibrary" %
-                    source)
+                raise Exception("Could not find '%s' in medialibrary" % name)
 
             if not props:
                 continue
@@ -295,8 +294,7 @@ class InstanceRunner(Signallable):
                 setattr(track, name, trackObject)
 
             if not timelineObject:
-                raise Exception("Could not add source '%s' to timeline" %
-                    source)
+                raise Exception("Could not add source '%s' to timeline" % name)
             for prop, value in props.iteritems():
                 setattr(timelineObject, prop, value)
         self.emit("timeline-configured")
