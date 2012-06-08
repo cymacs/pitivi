@@ -213,6 +213,8 @@ class ScaleRuler(gtk.DrawingArea, Zoomable, Loggable):
         self.scale[0] = float(2 / rate)
         self.scale[1] = float(5 / rate)
         self.scale[2] = float(10 / rate)
+        # TODO: also trigger a forced update? Otherwise it will be done later.
+        self.need_update = True
 
     def drawBackground(self, cr):
         setCairoColor(cr, self.style.bg[gtk.STATE_NORMAL])
