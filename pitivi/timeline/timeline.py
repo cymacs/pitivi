@@ -90,8 +90,10 @@ AUDIO_EFFECT_LIST = [AUDIO_EFFECT_TUPLE[0], EFFECT_TUPLE[0]],
 DELETE = _("Delete Selected")
 SPLIT = _("Split clip at playhead position")
 KEYFRAME = _("Add a keyframe")
-PREVFRAME = _("Move to the previous keyframe")
-NEXTFRAME = _("Move to the next keyframe")
+PREVKEYFRAME = _("Move to the previous keyframe")
+NEXTKEYFRAME = _("Move to the next keyframe")
+PREVFRAME = _("Move to the previous frame")
+NEXTFRAME = _("Move to the next frame")
 ZOOM_IN = _("Zoom In")
 ZOOM_OUT = _("Zoom Out")
 ZOOM_FIT = _("Zoom Fit")
@@ -125,6 +127,9 @@ ui = '''
                 <menuitem action="AlignObj" />
                 <separator />
                 <menuitem action="Keyframe" />
+                <menuitem action="Prevkeyframe" />
+                <menuitem action="Nextkeyframe" />
+                <separator />
                 <menuitem action="Prevframe" />
                 <menuitem action="Nextframe" />
                 <separator />
@@ -591,7 +596,7 @@ class Timeline(gtk.Table, Loggable, Zoomable):
         self._factories = None
         self._finish_drag = False
         self._createUI()
-        self.rate = gst.Fraction(1, 1)
+        self._framerate = gst.Fraction(1, 1)
         self._timeline = None
 
         # Used to insert sources at the end of the timeline
@@ -740,11 +745,17 @@ class Timeline(gtk.Table, Loggable, Zoomable):
             ("Keyframe", "pitivi-keyframe", _("Add a Keyframe"),
             "K", KEYFRAME, self.keyframe),
 
-            ("Prevframe", "pitivi-prevframe", _("_Previous Keyframe"),
-            "E", PREVFRAME, self.prevframe),
+            ("Prevkeyframe", None, _("_Previous Keyframe"),
+            "E", PREVKEYFRAME, self._previousKeyframeCb),
 
-            ("Nextframe", "pitivi-nextframe", _("_Next Keyframe"),
-            "R", NEXTFRAME, self.nextframe),
+            ("Nextkeyframe", None, _("_Next Keyframe"),
+            "R", NEXTKEYFRAME, self._nextKeyframeCb),
+
+            ("Prevframe", None, _("Previous frame"),
+            "comma", PREVFRAME, self._previousFrameCb),
+
+            ("Nextframe", None, _("Next frame"),
+            "period", NEXTFRAME, self._nextFrameCb),
         )
 
         actiongroup = gtk.ActionGroup("timelinepermanent")
@@ -791,14 +802,15 @@ class Timeline(gtk.Table, Loggable, Zoomable):
                 elif mod & gtk.gdk.CONTROL_MASK:
                     self._seeker.seek(ltime + 1)
                 else:
-                    self._seeker.seekRelative(0 - long(self.rate * gst.SECOND))
+                    # FIXME: what exactly is the length we seek back to? The inverted framerate, what's that for? seeking 1 frame backwards without clamping?
+                    self._seeker.seekRelative(0 - long(float(1 / self._framerate) * gst.SECOND))
             elif kv == gtk.keysyms.Right:
                 if mod & gtk.gdk.SHIFT_MASK:
                     self._seeker.seekRelative(gst.SECOND)
                 elif mod & gtk.gdk.CONTROL_MASK:
                     self._seeker.seek(rtime + 1)
                 else:
-                    self._seeker.seekRelative(long(self.rate * gst.SECOND))
+                    self._seeker.seekRelative(long(float(1 / self._framerate) * gst.SECOND))
         finally:
             return True
 
@@ -1256,9 +1268,8 @@ class Timeline(gtk.Table, Loggable, Zoomable):
             projectmanager.connect("new-project-loaded", self._projectChangedCb)
 
     def _settingsChangedCb(self, project, old, new):
-        rate = new.videorate
-        self.rate = float(1 / rate)
-        self.ruler.setProjectFrameRate(rate)
+        self._framerate = new.videorate
+        self.ruler.setProjectFrameRate(self._framerate)
 
 ## Timeline callbacks
 
@@ -1485,22 +1496,28 @@ class Timeline(gtk.Table, Loggable, Zoomable):
                     interpolator.newKeyframe(position_in_obj)
                     self.app.action_log.commit()
 
-    def playPause(self, unused_action):
-        self.app.current.pipeline.togglePlayback()
-
-    def prevframe(self, action):
+    def _previousKeyframeCb(self, action):
         position = self.app.current.pipeline.getPosition()
         prev_kf = self.timeline.getPrevKeyframe(position)
         if prev_kf:
             self._seeker.seek(prev_kf)
             self.scrollToPlayhead()
 
-    def nextframe(self, action):
+    def _nextKeyframeCb(self, action):
         position = self.app.current.pipeline.getPosition()
         next_kf = self.timeline.getNextKeyframe(position)
         if next_kf:
             self._seeker.seek(next_kf)
             self.scrollToPlayhead()
+
+    def _previousFrameCb(self, unused_widget):
+        self.app.current.pipeline.stepFrame(self._framerate, -1)
+
+    def _nextFrameCb(self, unused_widget):
+        self.app.current.pipeline.stepFrame(self._framerate, 1)
+
+    def playPause(self, unused_action):
+        self.app.current.pipeline.togglePlayback()
 
     def _screenshotCb(self, unused_action):
         """
