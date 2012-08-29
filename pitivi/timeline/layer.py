@@ -333,7 +333,6 @@ class TwoStateButton(gtk.Button):
     def __init__(self, state1="", state2=""):
         gtk.Button.__init__(self)
         self.set_relief(gtk.RELIEF_NONE)
-        self.connect("clicked", self._clickedCb)
 
         self.set_states(state1, state2)
         self._state = True
@@ -343,12 +342,14 @@ class TwoStateButton(gtk.Button):
     def set_states(self, state1, state2):
         self.states = {True: state1, False: state2}
 
-    def  _clickedCb(self, widget):
+    def do_clicked(self):
+
         self._state = not self._state
 
         self.set_label(self.states[self._state])
         self.emit("changed-state", self._state)
 
+        gtk.Button.do_clicked(self)
 
 class SpacedSeparator(gtk.EventBox):
     """

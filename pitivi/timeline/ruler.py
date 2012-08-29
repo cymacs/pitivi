@@ -84,29 +84,23 @@ class ScaleRuler(gtk.DrawingArea, Zoomable, Loggable):
         self.frame_height = 5.0
         self.frame_rate = gst.Fraction(1 / 1)
         self.ns_per_frame = float(1 / self.frame_rate) * gst.SECOND
-        self.connect('draw', self.drawCb)
-        self.connect('configure-event', self.configureEventCb)
 
     def _hadjValueChangedCb(self, hadj):
         self.pixbuf_offset = self.hadj.get_value()
         self.queue_draw()
 
-## Zoomable interface override
-
     def zoomChanged(self):
         self.need_update = True
         self.queue_draw()
-
-## timeline position changed method
 
     def timelinePositionChanged(self, value, unused_frame=None):
         self.position = value
         self.queue_draw()
 
-## gtk.Widget overrides
-    def configureEventCb(self, widget, event, data=None):
+    def do_configure_event(self, event):
+
         self.debug("Configuring, height %d, width %d",
-            widget.get_allocated_width(), widget.get_allocated_height())
+            self.get_allocated_width(), self.get_allocated_height())
 
         # Destroy previous buffer
         if self.pixbuf is not None:
@@ -115,11 +109,11 @@ class ScaleRuler(gtk.DrawingArea, Zoomable, Loggable):
 
         # Create a new buffer
         self.pixbuf = cairo.ImageSurface(cairo.FORMAT_ARGB32,
-                widget.get_allocated_width(), widget.get_allocated_height())
+                self.get_allocated_width(), self.get_allocated_height())
 
         return False
 
-    def drawCb(self, widget, cr):
+    def do_draw(self, cr):
         if self.pixbuf is not None:
             db = self.pixbuf
 

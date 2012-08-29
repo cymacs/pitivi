@@ -200,7 +200,6 @@ class TimelineCanvas(goocanvas.Canvas, Zoomable, Loggable):
         self._createUI()
         self._timeline = timeline
         self.settings = instance.settings
-        self.connect("draw", self.drawCb)
 
     def _createUI(self):
         self._cursor = ARROW
@@ -224,11 +223,9 @@ class TimelineCanvas(goocanvas.Canvas, Zoomable, Loggable):
             parent=root, x=0, y=0, width=3, line_width=0.5,
             fill_color_rgba=0x85c0e6FF,
             stroke_color_rgba=0x294f95FF)
-        self.connect("size-allocate", self._size_allocate_cb)
         root.connect("motion-notify-event", self._selectionDrag)
         root.connect("button-press-event", self._selectionStart)
         root.connect("button-release-event", self._selectionEnd)
-        self.connect("button-release-event", self._buttonReleasedCb)
         # add some padding for the horizontal scrollbar
         self.set_size_request(-1, self.height)
 
@@ -252,7 +249,8 @@ class TimelineCanvas(goocanvas.Canvas, Zoomable, Loggable):
         event.window.set_cursor(self._cursor)
         return True
 
-    def drawCb(self, widget, cr):
+    def do_draw(self, cr):
+
         allocation = self.get_allocation()
         width = allocation.width
         height = allocation.height
@@ -268,6 +266,8 @@ class TimelineCanvas(goocanvas.Canvas, Zoomable, Loggable):
             #event.area.width, event.area.height)
 
         #goocanvas.Canvas.do_expose_event(self, event)
+
+        return goocanvas.Canvas.do_draw(self, cr)
 
 ## implements selection marquee
 
@@ -388,7 +388,10 @@ class TimelineCanvas(goocanvas.Canvas, Zoomable, Loggable):
         self.set_bounds(0, 0, alloc.width, alloc.height)
         self._playhead.props.height = max(0, self.height + SPACING)
 
-    def _size_allocate_cb(self, widget, allocation):
+    def do_size_allocate(self, allocation):
+
+        goocanvas.Canvas.do_size_allocate(self, allocation)
+
         self._request_size()
 
     def zoomChanged(self):
@@ -410,13 +413,18 @@ class TimelineCanvas(goocanvas.Canvas, Zoomable, Loggable):
     def _snapEndedCb(self, *args):
         self._snap_indicator.props.visibility = goocanvas.ITEM_INVISIBLE
 
-    def _buttonReleasedCb(self, canvas, event):
+    def do_button_release_event(self, event):
+
+        goocanvas.Canvas.do_button_release_event(self, event)
+
         # select clicked layer, if any
         x, y = self.from_event(event) + self._get_adjustment(True, True)
         self.app.gui.timeline_ui.controls.selectLayerControlForY(y)
 
         # also hide snap indicator
         self._snapEndedCb()
+
+        return False
 
 ## settings callbacks
     def _setSettings(self):
@@ -512,11 +520,13 @@ class TimelineControls(gtk.VBox, Loggable):
         self.separator_height = 0
         self.type_map = {ges.TRACK_TYPE_AUDIO: AudioLayerControl,
                          ges.TRACK_TYPE_VIDEO: VideoLayerControl}
-        self.connect("size-allocate", self._sizeAllocatedCb)
         self.priority_block = sys.maxint
         self.priority_block_time = time.time()
 
-    def _sizeAllocatedCb(self, widget, alloc):
+    def do_size_allocate(self, allocation):
+
+        gtk.VBox.do_size_allocate(self, allocation)
+
         if self.get_children():
             self.separator_height = self.get_children()[0].getSeparatorHeight()
         self.app.gui.timeline_ui._canvas.updateTracks()
