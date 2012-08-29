@@ -435,7 +435,9 @@ class TrackObject(View, goocanvas.Group, Zoomable, Loggable):
 
     _height = 0
 
-    def setHeight(self, height):
+    def _setHeight(self, height):
+        if self._height == height:
+            return
         self._height = height
         self.bg.props.height = height
         self.start_handle.height = height
@@ -445,10 +447,10 @@ class TrackObject(View, goocanvas.Group, Zoomable, Loggable):
             self.preview.height = height
         self._update()
 
-    def getHeight(self):
+    def _getHeight(self):
         return self._height
 
-    height = property(getHeight, setHeight)
+    height = property(_getHeight, _setHeight)
 
     _expanded = True
 
@@ -597,10 +599,7 @@ class TrackObject(View, goocanvas.Group, Zoomable, Loggable):
         layer = self.element.get_timeline_object().get_layer()
         track_type = self.element.get_track().get_property("track-type")
 
-        # update height, compare with current height to not run into recursion
-        new_height = self.app.gui.timeline_ui.controls.getHeightOfLayer(track_type, layer)
-        if self.height != new_height:
-            self.height = new_height
+        self.height = self.app.gui.timeline_ui.controls.getHeightOfLayer(track_type, layer)
 
         # get y position for layer
         y = self.app.gui.timeline_ui.controls.getYOfLayer(track_type, layer)
