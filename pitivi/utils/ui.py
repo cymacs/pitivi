@@ -73,7 +73,6 @@ TYPE_PITIVI_AUDIO_EFFECT = 28
 TYPE_PITIVI_VIDEO_EFFECT = 29
 TYPE_PITIVI_AUDIO_TRANSITION = 30
 TYPE_PITIVI_VIDEO_TRANSITION = 31
-TYPE_PITIVI_LAYER_CONTROL = 32
 
 FILE_TARGET_ENTRY = gtk.TargetEntry.new("text/plain", Gtk.TargetFlags.OTHER_APP, TYPE_TEXT_PLAIN)
 URI_TARGET_ENTRY = gtk.TargetEntry.new("text/uri-list", 0, TYPE_URI_LIST)
@@ -83,7 +82,6 @@ AUDIO_EFFECT_TARGET_ENTRY = gtk.TargetEntry.new("pitivi/audio-effect", 0, TYPE_P
 VIDEO_EFFECT_TARGET_ENTRY = gtk.TargetEntry.new("pitivi/video-effect", 0, TYPE_PITIVI_VIDEO_EFFECT)
 AUDIO_TRANSITION_TARGET_ENTRY = gtk.TargetEntry.new("pitivi/audio-transition", 0, TYPE_PITIVI_AUDIO_TRANSITION)
 VIDEO_TRANSITION_TARGET_ENTRY = gtk.TargetEntry.new("pitivi/video-transition", 0, TYPE_PITIVI_VIDEO_TRANSITION)
-LAYER_CONTROL_TARGET_ENTRY = gtk.TargetEntry.new("pitivi/layer-control", 0, TYPE_PITIVI_LAYER_CONTROL)
 
 
 # ---------------------- ARGB color helper-------------------------------------#

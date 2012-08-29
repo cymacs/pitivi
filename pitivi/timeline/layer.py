@@ -27,7 +27,6 @@ import gobject
 from gettext import gettext as _
 
 from pitivi.utils.loggable import Loggable
-from pitivi.utils.ui import LAYER_CONTROL_TARGET_ENTRY, TYPE_PITIVI_LAYER_CONTROL
 
 
 # TODO add tooltips
@@ -152,11 +151,6 @@ class BaseLayerControl(gtk.VBox, Loggable):
             menu_item.set_use_underline(True)
         self.popup.show_all()
 
-        # Drag and drop
-        self.drag_source_set(gtk.gdk.BUTTON1_MASK,
-                             [LAYER_CONTROL_TARGET_ENTRY],
-                             gtk.gdk.ACTION_MOVE)
-
     def getSelected(self):
         return self._selected
 
@@ -270,18 +264,6 @@ class BaseLayerControl(gtk.VBox, Loggable):
         if position == -2 or position == -1:
             self.layer_down.set_sensitive(False)
             self.layer_last.set_sensitive(False)
-
-    def setSeparatorHighlight(self, highlighted):
-        """
-        Sets if the Separator should be highlighted
-
-        Used for visual drag'n'drop feedback
-        """
-        if highlighted:
-            self.sep.override_background_color(gtk.STATE_NORMAL, self.SELECTED_COLOR)
-        else:
-            self.sep.override_background_color(gtk.STATE_NORMAL, self.UNSELECTED_COLOR)
-
 
 class VideoLayerControl(BaseLayerControl):
     """

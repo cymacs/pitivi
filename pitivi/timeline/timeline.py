@@ -61,7 +61,7 @@ from pitivi.utils.loggable import Loggable
 from pitivi.utils.ui import SPACING, CANVAS_SPACING, \
     TYPE_PITIVI_FILESOURCE, VIDEO_EFFECT_TARGET_ENTRY, Point, \
     AUDIO_EFFECT_TARGET_ENTRY, EFFECT_TARGET_ENTRY, FILESOURCE_TARGET_ENTRY, TYPE_PITIVI_EFFECT, \
-    LAYER_CREATION_BLOCK_TIME, LAYER_CONTROL_TARGET_ENTRY
+    LAYER_CREATION_BLOCK_TIME
 
 # FIXME GES Port regression
 # from pitivi.utils.align import AutoAligner
@@ -516,13 +516,6 @@ class TimelineControls(gtk.VBox, Loggable):
         self.priority_block = sys.maxint
         self.priority_block_time = time.time()
 
-        # drag'n' drop
-        self.connect("drag_drop", self._dragDropCb)
-        self.connect("drag_motion", self._dragMotionCb)
-        self.connect("drag_leave", self._dragLeaveCb)
-        self.drag_dest_set(gtk.DEST_DEFAULT_ALL,
-                             [LAYER_CONTROL_TARGET_ENTRY], gtk.gdk.ACTION_MOVE)
-
     def _sizeAllocatedCb(self, widget, alloc):
         if self.get_children():
             self.separator_height = self.get_children()[0].getSeparatorHeight()
@@ -748,44 +741,6 @@ class TimelineControls(gtk.VBox, Loggable):
             # else check next control
             else:
                 current_y += child.getHeight()
-
-    def _dragDropCb(self, widget, context, x, y, time):
-        """
-        Handles received drag data to reorder layers
-        """
-        widget = context.get_source_widget()
-
-        self._unhighlightSeparators()
-
-        current = self.getControlIndex(widget)
-        index = self._getIndexForPosition(y, widget)
-
-        # if current control is before desired index move one place less
-        if current < index:
-            index -= 1
-
-        self.moveControlWidget(widget, index)
-
-    def _dragLeaveCb(self, widget, context, timestamp):
-        self._unhighlightSeparators()
-
-    def _dragMotionCb(self, widget, context, x, y, timestamp):
-        """
-        Highlight separator where control would go when dropping
-        """
-        index = self._getIndexForPosition(y, context.get_source_widget())
-
-        self._unhighlightSeparators()
-
-        # control would go in first position
-        if index == 0:
-            pass
-        else:
-            self.get_children()[index - 1].setSeparatorHighlight(True)
-
-    def _unhighlightSeparators(self):
-        for child in self.get_children():
-            child.setSeparatorHighlight(False)
 
     def _getIndexForPosition(self, y, widget):
         """
